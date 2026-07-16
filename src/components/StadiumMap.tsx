@@ -44,13 +44,20 @@ const COORDINATES: Record<string, [number, number]> = {
 
 interface StadiumMapProps {
   activeLocation: string;
+  accessibilityMode?: boolean;
+  showHeatmap?: boolean;
 }
 
-export default function StadiumMap({ activeLocation }: StadiumMapProps) {
+export default function StadiumMap({ 
+  activeLocation, 
+  accessibilityMode = false, 
+  showHeatmap = false 
+}: StadiumMapProps) {
   const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Record<string, any>>({});
   const routingLineRef = useRef<any>(null);
+  const heatmapLayersRef = useRef<any[]>([]);
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
 
   // Helper to match activeLocation string to a node
@@ -319,6 +326,43 @@ export default function StadiumMap({ activeLocation }: StadiumMapProps) {
     };
   }, []);
 
+  // Sync Heatmap circles (Phase 8: Staff Side Overlay)
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+
+    // Clear existing heatmap layers
+    heatmapLayersRef.current.forEach(layer => layer.remove());
+    heatmapLayersRef.current = [];
+
+    if (showHeatmap) {
+      import('leaflet').then((LModule) => {
+        const L = LModule.default;
+        
+        // Define some crowded spots matching the user's pins
+        const hotspots: { coords: [number, number]; color: string; radius: number }[] = [
+          { coords: COORDINATES["gate-verizon"], color: '#ef4444', radius: 45 },
+          { coords: COORDINATES["gate-pepsi"], color: '#ef4444', radius: 55 },
+          { coords: COORDINATES["parking-lot-e"], color: '#f59e0b', radius: 65 },
+          { coords: COORDINATES["vendor-pizza-1"], color: '#f59e0b', radius: 35 },
+          { coords: [40.8135, -74.0744], color: '#ef4444', radius: 40 }, // Pitch area
+        ];
+
+        hotspots.forEach(spot => {
+          const circle = L.circle(spot.coords, {
+            color: spot.color,
+            fillColor: spot.color,
+            fillOpacity: 0.4,
+            radius: spot.radius,
+            weight: 1,
+            className: 'animate-pulse'
+          }).addTo(map);
+          heatmapLayersRef.current.push(circle);
+        });
+      });
+    }
+  }, [showHeatmap]);
+
   // Sync Active Location (panning, opening popups, drawing walking routes)
   useEffect(() => {
     if (!mapRef.current) return;
@@ -352,25 +396,33 @@ export default function StadiumMap({ activeLocation }: StadiumMapProps) {
       }, 300);
     }
 
-    // Dynamic routing: Draw animated line from closest gate to target node
+    // Dynamic routing: Draw animated line from closest gate to target node (Phase 13: Accessibility Support)
     if (node.type !== 'gate' && node.id !== 'highway-route3' && node.id !== 'highway-route120' && node.id !== 'highway-nj-turnpike') {
       import('leaflet').then((LModule) => {
         const L = LModule.default;
         const gateCoord = getClosestGateCoord(coords);
         
+        let pathPoints: [number, number][] = [gateCoord, coords];
+
+        // If Accessibility Mode is ON, route through the elevator node [40.8138, -74.0752]
+        if (accessibilityMode) {
+          const adaElevatorCoord: [number, number] = [40.8138, -74.0752];
+          pathPoints = [gateCoord, adaElevatorCoord, coords];
+        }
+
         // Draw route polyline
-        const routeLine = L.polyline([gateCoord, coords], {
-          color: '#f43f5e',
-          weight: 4,
+        const routeLine = L.polyline(pathPoints, {
+          color: accessibilityMode ? '#06b6d4' : '#f43f5e',
+          weight: accessibilityMode ? 5 : 4,
           opacity: 0.8,
-          className: 'routing-polyline'
+          className: accessibilityMode ? 'routing-polyline accessible-polyline' : 'routing-polyline'
         }).addTo(map);
 
         routingLineRef.current = routeLine;
       });
     }
 
-  }, [activeLocation]);
+  }, [activeLocation, accessibilityMode]);
 
   // Update HTML styles dynamically when node highlighted
   useEffect(() => {
@@ -401,7 +453,7 @@ export default function StadiumMap({ activeLocation }: StadiumMapProps) {
   };
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-700/50 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden select-none">
+    <div className="relative w-full h-full flex flex-col items-stretch p-4 bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-700/50 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden select-none">
       
       {/* Global CSS overrides for Leaflet styling */}
       <style>{`
@@ -427,6 +479,10 @@ export default function StadiumMap({ activeLocation }: StadiumMapProps) {
         .routing-polyline {
           stroke-dasharray: 8, 8;
           animation: dash 15s linear infinite;
+        }
+        .accessible-polyline {
+          stroke-dasharray: 4, 6 !important;
+          animation: dash 10s linear infinite !important;
         }
         @keyframes dash {
           to {
@@ -466,7 +522,7 @@ export default function StadiumMap({ activeLocation }: StadiumMapProps) {
       </div>
 
       {/* Map Container */}
-      <div ref={mapContainerRef} className="w-full h-full min-h-[300px] lg:min-h-[450px] rounded-2xl overflow-hidden z-10 border border-slate-800 shadow-inner"></div>
+      <div ref={mapContainerRef} className="w-full flex-1 rounded-2xl overflow-hidden z-10 border border-slate-800 shadow-inner"></div>
       
       {/* Dynamic Routing Alert Banner */}
       <div className="absolute bottom-6 left-6 right-6 flex justify-center z-[1000] pointer-events-none">

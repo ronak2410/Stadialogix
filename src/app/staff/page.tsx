@@ -14,6 +14,19 @@ const StadiumMap = dynamic(() => import('@/components/StadiumMap'), {
 export default function StaffDashboard() {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [liveNodes, setLiveNodes] = useState<any[]>(stadiumData.nodes);
+  const [liveMatch, setLiveMatch] = useState<any>(null);
+
+  const fetchLiveFeed = async () => {
+    try {
+      const res = await fetch('/api/live');
+      const data = await res.json();
+      if (data.nodes) setLiveNodes(data.nodes);
+      if (data.match) setLiveMatch(data.match);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchInsights = async () => {
     setIsLoading(true);
@@ -32,7 +45,11 @@ export default function StaffDashboard() {
 
   useEffect(() => {
     fetchInsights();
-    const interval = setInterval(fetchInsights, 60000);
+    fetchLiveFeed();
+    const interval = setInterval(() => {
+      fetchInsights();
+      fetchLiveFeed();
+    }, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -57,7 +74,10 @@ export default function StaffDashboard() {
             </div>
             <div>
               <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-400 to-cyan-400">StadiaLogix Ops</h1>
-              <p className="text-xs text-slate-400">Command Center</p>
+              <p className="text-xs text-slate-400 flex items-center gap-2">
+                Command Center 
+                {liveMatch && <span className="px-2 py-0.5 bg-slate-800 rounded-full text-[9px] text-fuchsia-300 font-mono border border-slate-700">LIVE: {liveMatch.team1} {liveMatch.score1} - {liveMatch.score2} {liveMatch.team2} ({liveMatch.time})</span>}
+              </p>
             </div>
           </div>
           <button onClick={fetchInsights} className="px-5 py-2 bg-gradient-to-r from-fuchsia-600 to-cyan-600 hover:from-fuchsia-500 hover:to-cyan-500 text-white rounded-full text-sm font-bold transition-all shadow-md flex items-center gap-2">
@@ -97,7 +117,22 @@ export default function StaffDashboard() {
                     </div>
                     {alert.action && (
                       <div className="mt-3 p-3 bg-slate-950/50 border border-slate-800/80 rounded-xl">
-                        <span className="text-[9px] font-extrabold text-cyan-400 uppercase tracking-widest block mb-1">Response Protocol</span>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[9px] font-extrabold text-cyan-400 uppercase tracking-widest block">Response Protocol</span>
+                          <button 
+                            className="bg-cyan-900/50 hover:bg-cyan-800 text-cyan-300 border border-cyan-700 rounded px-2 py-0.5 text-[9px] font-bold transition-colors shadow-inner"
+                            onClick={(e) => {
+                              const btn = e.currentTarget;
+                              btn.innerText = "Executing...";
+                              setTimeout(() => {
+                                btn.innerText = "Protocol Deployed ✓";
+                                btn.className = "bg-emerald-900/50 text-emerald-300 border border-emerald-700 rounded px-2 py-0.5 text-[9px] font-bold cursor-default transition-all";
+                              }, 1500);
+                            }}
+                          >
+                            Execute Protocol
+                          </button>
+                        </div>
                         <p className="text-[11px] text-slate-300 leading-normal">{alert.action}</p>
                       </div>
                     )}
@@ -122,7 +157,7 @@ export default function StaffDashboard() {
               </div>
             </div>
             <div className="flex-1 min-h-[450px] bg-slate-950/50 rounded-2xl border border-slate-800/80 overflow-hidden relative shadow-inner">
-              <StadiumMap activeLocation="" />
+              <StadiumMap activeLocation="" showHeatmap={true} />
             </div>
           </div>
 
@@ -132,7 +167,7 @@ export default function StaffDashboard() {
               <Activity className="w-5 h-5 text-cyan-400" /> Node Status
             </h2>
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-800">
-              {stadiumData.nodes.map((node: any) => (
+              {liveNodes.map((node: any) => (
                 <div key={node.id} className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 hover:border-slate-600 transition-colors">
                   <div className="flex justify-between items-center mb-3">
                     <span className="font-bold text-slate-200 text-sm">{node.name}</span>

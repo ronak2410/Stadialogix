@@ -22,6 +22,11 @@ export default function FanMode() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    const saved = localStorage.getItem('stadialogix_green_points');
+    if (saved) setGreenPoints(parseInt(saved, 10));
+  }, []);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -55,7 +60,7 @@ export default function FanMode() {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US'; // Uses browser native speech to text model
+    recognition.lang = navigator.language || 'en-US'; // Uses browser native speech to text model
     recognition.continuous = false;
     recognition.interimResults = false;
 
@@ -112,7 +117,11 @@ export default function FanMode() {
         let finalMessage = data.message;
         if (finalMessage.includes('[AWARD_GREEN_POINTS]')) {
           finalMessage = finalMessage.replace('[AWARD_GREEN_POINTS]', '').trim();
-          setGreenPoints(prev => prev + 50);
+          setGreenPoints(prev => {
+            const newPoints = prev + 50;
+            localStorage.setItem('stadialogix_green_points', newPoints.toString());
+            return newPoints;
+          });
         }
         setMessages(prev => [...prev, { role: 'assistant', content: finalMessage }]);
       }
@@ -124,14 +133,14 @@ export default function FanMode() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-950 font-sans relative overflow-hidden w-full max-w-[100vw]">
+    <div className="flex flex-col h-[100dvh] bg-slate-950 font-sans relative overflow-hidden w-full max-w-[100vw]">
       {/* Premium Dark Theme Animated Background */}
       <div className="absolute top-0 -left-10 w-96 h-96 bg-fuchsia-900/30 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-blob pointer-events-none"></div>
       <div className="absolute top-0 -right-10 w-96 h-96 bg-cyan-900/30 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-blob animation-delay-2000 pointer-events-none"></div>
       <div className="absolute -bottom-20 left-1/4 w-96 h-96 bg-blue-900/30 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-blob animation-delay-4000 pointer-events-none"></div>
 
       {/* Header */}
-      <header className="flex items-center justify-between p-4 bg-slate-900/50 backdrop-blur-xl border-b border-slate-800/50 shadow-md z-20">
+      <header className="flex items-center justify-between p-4 bg-slate-900/50 backdrop-blur-xl border-b border-slate-800/50 shadow-md z-20 shrink-0">
         <div className="flex items-center gap-4">
           <Link href="/" className="p-2 hover:bg-slate-800 rounded-full transition-colors">
             <ArrowLeft className="w-5 h-5 text-slate-400" />
@@ -154,16 +163,16 @@ export default function FanMode() {
         )}
       </header>
 
-      {/* Main Split View - Stack vertically on mobile, side-by-side on desktop */}
-      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden z-10">
+      {/* Main Split View - Side-by-side */}
+      <div className="grid grid-cols-2 flex-1 h-0 overflow-hidden z-10 w-full">
         
         {/* Left Side: Interactive Map */}
-        <div className="w-full lg:w-1/2 p-4 lg:p-6 border-b lg:border-b-0 lg:border-r border-slate-800/50 h-64 lg:h-auto flex-shrink-0">
+        <div className="p-4 lg:p-6 border-r border-slate-800/50 flex flex-col h-full min-h-0 overflow-hidden">
           <StadiumMap activeLocation={activeLocation} />
         </div>
 
         {/* Right Side: Chat Interface */}
-        <div className="flex flex-col flex-1 relative w-full lg:w-1/2 overflow-hidden">
+        <div className="flex flex-col h-full min-h-0 overflow-hidden relative">
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth">
             {messages.map((msg, index) => {
               const orderMatch = msg.content.match(/\[RENDER_ORDER_CARD:(.+?)\]/);
@@ -294,7 +303,7 @@ export default function FanMode() {
           </div>
 
           {/* Input Area */}
-          <footer className="p-4 bg-slate-900/80 backdrop-blur-2xl border-t border-slate-800/50 z-20">
+          <footer className="p-4 bg-slate-900/80 backdrop-blur-2xl border-t border-slate-800/50 z-20 shrink-0">
             {imagePreview && (
               <div className="max-w-4xl mx-auto mb-3 relative inline-block">
                 <img src={imagePreview} alt="Preview" className="h-16 w-16 object-cover rounded-lg border-2 border-fuchsia-500" />

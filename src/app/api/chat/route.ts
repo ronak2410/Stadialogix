@@ -66,7 +66,7 @@ Assistant: "I checked the stadium directory, and there are no sushi vendors avai
     const lastMessage = messages[messages.length - 1];
     
     // Format payload for Multimodal Vision API
-    let payloadContents: any = [];
+    const payloadContents: any = [];
     if (lastMessage.image) {
       // Extract base64 part
       const base64Data = lastMessage.image.split(',')[1];
