@@ -200,7 +200,7 @@ export default function FanMode() {
   }, [input, imagePreview, messages]);
 
   return (
-    <div className={`flex flex-col min-h-[100svh] lg:h-[100svh] lg:overflow-hidden ${isARMode ? 'bg-transparent' : 'bg-slate-950'} font-sans relative overflow-x-hidden w-full max-w-[100vw]`}>
+    <div className={`flex flex-col min-h-[100svh] ${isARMode ? 'bg-transparent' : 'bg-slate-950'} font-sans relative overflow-x-hidden w-full max-w-[100vw]`}>
       
       {/* AR Camera Background Feed */}
       {isARMode && (
@@ -452,10 +452,10 @@ export default function FanMode() {
                   onChange={(e) => setLanguage(e.target.value)}
                   aria-label="Select Navigation Audio Language"
                 >
-                  <option value="en-US" className="bg-slate-900 text-slate-200">English</option>
-                  <option value="es-ES" className="bg-slate-900 text-slate-200">Español</option>
-                  <option value="fr-FR" className="bg-slate-900 text-slate-200">Français</option>
-                  <option value="de-DE" className="bg-slate-900 text-slate-200">Deutsch</option>
+                  <option value="en-US" className="bg-slate-800 text-slate-200">English</option>
+                  <option value="es-ES" className="bg-slate-800 text-slate-200">Español</option>
+                  <option value="fr-FR" className="bg-slate-800 text-slate-200">Français</option>
+                  <option value="de-DE" className="bg-slate-800 text-slate-200">Deutsch</option>
                 </select>
               </div>
               <button 
