@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import FanMode from '../page';
+import FanMode from '@/app/(frontend)/fan/page';
 
 // Mock Next.js dynamic imports
 vi.mock('next/dynamic', () => ({
