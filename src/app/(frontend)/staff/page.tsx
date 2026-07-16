@@ -54,7 +54,7 @@ export default function StaffDashboard() {
   }, []);
 
   return (
-    <div className="min-h-[100svh] bg-slate-950 text-slate-50 font-sans relative overflow-x-hidden">
+    <div id="main-content" className="min-h-[100svh] bg-slate-950 text-slate-50 font-sans relative overflow-x-hidden">
       {/* Dark Theme Background */}
       <div className="absolute inset-0 bg-slate-950 -z-10"></div>
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
@@ -86,7 +86,7 @@ export default function StaffDashboard() {
                 const confirmed = window.confirm("CRITICAL WARNING: Are you sure you want to trigger a stadium-wide evacuation protocol? All fan apps will be overridden.");
                 if (confirmed) setEvacuationMode(!evacuationMode);
               }}
-              className={`px-4 py-2 rounded-full text-xs font-bold transition-all shadow-md flex items-center gap-2 border ${evacuationMode ? 'bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.4)] animate-pulse' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+              aria-pressed={evacuationMode} aria-label="Toggle stadium evacuation protocol" className={`px-4 py-2 rounded-full text-xs font-bold transition-all shadow-md flex items-center gap-2 border ${evacuationMode ? 'bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.4)] animate-pulse' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
             >
               <AlertTriangle className="w-4 h-4" />
               {evacuationMode ? 'EVACUATION ACTIVE' : 'TRIGGER EVACUATION'}

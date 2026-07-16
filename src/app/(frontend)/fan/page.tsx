@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Send, MapPin, Navigation, Loader2, Volume2, ArrowLeft, Camera, Image as ImageIcon, Mic, Leaf, ShoppingCart, Crown, Shirt, AlertTriangle, Globe, ScanFace, Tv2, Activity, Play } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, MapPin, Navigation, Loader2, Volume2, ArrowLeft, Camera, Mic, Leaf, ShoppingCart, Crown, Shirt, AlertTriangle, Globe, ScanFace, Tv2, Activity, Play } from 'lucide-react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
@@ -106,15 +106,19 @@ export default function FanMode() {
     if (lastMsg && lastMsg.role === 'assistant') {
       setActiveLocation(lastMsg.content);
     }
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
   useEffect(() => {
-    scrollToBottom();
-    const lastMsg = messages[messages.length - 1];
-    if (lastMsg && lastMsg.role === 'assistant') {
-      setActiveLocation(lastMsg.content);
-    }
-  }, [messages]);
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowVIPModal(false);
+        setShowSeatView(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, []);
 
   const toggleListen = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -200,7 +204,7 @@ export default function FanMode() {
   }, [input, imagePreview, messages]);
 
   return (
-    <div className={`flex flex-col min-h-[100svh] ${isARMode ? 'bg-transparent' : 'bg-slate-950'} font-sans relative overflow-x-hidden w-full max-w-[100vw]`}>
+    <div id="main-content" className={`flex flex-col min-h-[100svh] ${isARMode ? 'bg-transparent' : 'bg-slate-950'} font-sans relative overflow-x-hidden w-full max-w-[100vw]`}>
       
       {/* AR Camera Background Feed */}
       {isARMode && (
@@ -535,17 +539,17 @@ export default function FanMode() {
       
       {/* VIP Fast-Pass Modal */}
       {showVIPModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4" role="dialog" aria-modal="true" aria-labelledby="vip-fast-pass-title">
           <div className="bg-slate-900 border border-amber-500/50 rounded-3xl p-8 max-w-sm w-full text-center shadow-[0_0_40px_rgba(245,158,11,0.2)]">
             <ScanFace className="w-16 h-16 text-amber-400 mx-auto mb-4 animate-pulse" />
-            <h2 className="text-2xl font-extrabold text-amber-400 mb-2">VIP Fast-Pass</h2>
+            <h2 id="vip-fast-pass-title" className="text-2xl font-extrabold text-amber-400 mb-2">VIP Fast-Pass</h2>
             <p className="text-sm text-slate-400 mb-6">Your biometric identity has been securely verified. Proceed directly to the Express Lane.</p>
             <div className="bg-white p-4 rounded-xl mx-auto w-48 h-48 mb-6 flex items-center justify-center">
               <div className="w-full h-full border-4 border-dashed border-slate-300 flex items-center justify-center text-slate-400 font-mono text-xs">
                 [SECURE_QR_CODE]
               </div>
             </div>
-            <button onClick={() => setShowVIPModal(false)} className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-full font-bold transition-colors">
+            <button onClick={() => setShowVIPModal(false)} className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-full font-bold transition-colors" aria-label="Close VIP Fast-Pass modal">
               Close
             </button>
           </div>
@@ -554,11 +558,11 @@ export default function FanMode() {
 
       {/* 3D View From Seat Modal */}
       {showSeatView && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md px-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-md px-4" role="dialog" aria-modal="true" aria-labelledby="seat-view-title">
           <div className="bg-slate-950 border border-slate-700 rounded-3xl overflow-hidden max-w-4xl w-full flex flex-col shadow-2xl">
             <div className="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
-              <h2 className="text-lg font-extrabold text-blue-400 flex items-center gap-2"><Tv2 className="w-5 h-5" /> 3D View From Seat</h2>
-              <button onClick={() => setShowSeatView(false)} className="text-slate-400 hover:text-white">&times; Close</button>
+              <h2 id="seat-view-title" className="text-lg font-extrabold text-blue-400 flex items-center gap-2"><Tv2 className="w-5 h-5" /> 3D View From Seat</h2>
+              <button onClick={() => setShowSeatView(false)} className="text-slate-400 hover:text-white" aria-label="Close 3D seat view modal">&times; Close</button>
             </div>
             <div className="h-[60vh] bg-slate-900 relative">
               {/* Fake 3D interactive view for demo */}

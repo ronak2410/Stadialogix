@@ -30,7 +30,7 @@ export default function RootLayout({
       style={{ colorScheme: 'dark' }}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-slate-950 text-white" suppressHydrationWarning>{children}</body>
+      <body className="min-h-full flex flex-col bg-slate-950 text-white" suppressHydrationWarning><a href="#main-content" className="skip-link">Skip to main content</a>{children}</body>
     </html>
   );
 }

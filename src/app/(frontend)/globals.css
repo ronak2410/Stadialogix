@@ -62,3 +62,23 @@ body {
 .animation-delay-4000 {
   animation-delay: 4s;
 }
+
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 10000;
+  transform: translateY(-150%);
+  border-radius: 9999px;
+  background: #f8fafc;
+  color: #020617;
+  padding: 0.625rem 1rem;
+  font-weight: 700;
+  transition: transform 150ms ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 3px solid #06b6d4;
+  outline-offset: 3px;
+}

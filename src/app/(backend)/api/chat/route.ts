@@ -1,28 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AIService } from '@/services/ai.service';
-import { ChatRequestPayload } from '@/types';
+import { checkRateLimit, getClientKey, SECURITY_HEADERS, validateChatPayload } from '@/utils/requestGuards';
 
 export async function POST(req: NextRequest) {
+  const rateLimit = checkRateLimit(getClientKey(req.headers));
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again shortly.' },
+      { status: 429, headers: SECURITY_HEADERS }
+    );
+  }
+
   try {
-    const json = (await req.json()) as ChatRequestPayload;
-    
-    if (!json.messages || !Array.isArray(json.messages) || json.messages.length === 0) {
+    const validation = validateChatPayload(await req.json());
+    if (!validation.ok) {
       return NextResponse.json(
-        { error: 'Invalid payload: messages array is required.' },
-        { status: 400 }
+        { error: validation.error },
+        { status: 400, headers: SECURITY_HEADERS }
       );
     }
 
-    const responseText = await AIService.generateChatResponse(json.messages);
+    const responseText = await AIService.generateChatResponse(validation.messages);
 
-    return NextResponse.json({ message: responseText });
-
+    return NextResponse.json(
+      { message: responseText },
+      { headers: SECURITY_HEADERS }
+    );
   } catch (error: unknown) {
     console.error('Chat API Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
+      { error: 'Unable to process chat request right now.' },
+      { status: 500, headers: SECURITY_HEADERS }
     );
   }
 }

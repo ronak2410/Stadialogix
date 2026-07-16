@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AIService } from '../ai.service';
+import { AIService } from '@/services/ai.service';
 import { ChatMessage } from '@/types';
 
 // Mock the genai client

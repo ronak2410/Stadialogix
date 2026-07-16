@@ -473,7 +473,7 @@ const StadiumMap = React.memo(function StadiumMap({
       });
     }
 
-  }, [activeLocation, accessibilityMode, mapReady]);
+  }, [activeLocation, accessibilityMode, evacuationMode, mapReady]);
 
   // Update HTML styles dynamically when node highlighted
   useEffect(() => {
