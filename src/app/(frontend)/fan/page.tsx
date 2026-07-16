@@ -327,6 +327,7 @@ export default function FanMode() {
                     : 'bg-slate-900/80 backdrop-blur-xl text-slate-200 border border-slate-700/80 rounded-bl-none shadow-[0_0_20px_rgba(0,0,0,0.5)]'}`}>
                     
                     {msg.image && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={msg.image} alt="Uploaded surroundings for location context" className="max-w-full h-auto rounded-xl mb-3 border border-slate-700/50" />
                     )}
                     <p className="leading-relaxed whitespace-pre-wrap">{finalText}</p>
@@ -441,6 +442,7 @@ export default function FanMode() {
           <footer className={`px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] ${isARMode ? 'bg-slate-900/60' : 'bg-slate-900/80'} backdrop-blur-2xl border-t border-slate-800/50 z-20 shrink-0`}>
             {imagePreview && (
               <div className="max-w-4xl mx-auto mb-3 relative inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={imagePreview} alt="Camera upload preview" className="h-16 w-16 object-cover rounded-lg border-2 border-fuchsia-500" />
                 <button suppressHydrationWarning onClick={() => setImagePreview(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold" aria-label="Remove image preview">&times;</button>
               </div>

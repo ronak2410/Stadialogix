@@ -10,11 +10,43 @@ const StadiumMap = dynamic(() => import('@/components/StadiumMap'), {
   ssr: false,
 });
 
+interface StadiumAlert {
+  type: string;
+  severity: string;
+  title: string;
+  description: string;
+  action?: string;
+  time?: string;
+  location?: string;
+}
+
+interface StadiumNode {
+  id: string;
+  name: string;
+  type: string;
+  crowdDensity?: number;
+  currentQueueTime?: number;
+  wasteBinLevel?: number;
+  offerings?: string[];
+  location?: string;
+  details?: string;
+  isAccessible?: boolean;
+  dynamicRouting?: string;
+}
+
+interface LiveMatch {
+  team1: string;
+  team2: string;
+  score1: number;
+  score2: number;
+  time: string;
+}
+
 export default function StaffDashboard() {
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<StadiumAlert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [liveNodes, setLiveNodes] = useState<any[]>(stadiumData.nodes);
-  const [liveMatch, setLiveMatch] = useState<any>(null);
+  const [liveNodes, setLiveNodes] = useState<StadiumNode[]>(stadiumData.nodes as StadiumNode[]);
+  const [liveMatch, setLiveMatch] = useState<LiveMatch | null>(null);
   const [evacuationMode, setEvacuationMode] = useState(false);
 
   const fetchLiveFeed = async () => {
@@ -28,8 +60,10 @@ export default function StaffDashboard() {
     }
   };
 
-  const fetchInsights = async () => {
-    setIsLoading(true);
+  const fetchInsights = async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
     try {
       const res = await fetch('/api/staff');
       const data = await res.json();
@@ -44,10 +78,10 @@ export default function StaffDashboard() {
   };
 
   useEffect(() => {
-    fetchInsights();
+    fetchInsights(false);
     fetchLiveFeed();
     const interval = setInterval(() => {
-      fetchInsights();
+      fetchInsights(true);
       fetchLiveFeed();
     }, 15000);
     return () => clearInterval(interval);
@@ -91,7 +125,7 @@ export default function StaffDashboard() {
               <AlertTriangle className="w-4 h-4" />
               {evacuationMode ? 'EVACUATION ACTIVE' : 'TRIGGER EVACUATION'}
             </button>
-            <button onClick={fetchInsights} className="px-5 py-2 bg-gradient-to-r from-fuchsia-600 to-cyan-600 hover:from-fuchsia-500 hover:to-cyan-500 text-white rounded-full text-sm font-bold transition-all shadow-[0_0_20px_rgba(217,70,239,0.4)] flex items-center gap-2">
+            <button onClick={() => fetchInsights(true)} className="px-5 py-2 bg-gradient-to-r from-fuchsia-600 to-cyan-600 hover:from-fuchsia-500 hover:to-cyan-500 text-white rounded-full text-sm font-bold transition-all shadow-[0_0_20px_rgba(217,70,239,0.4)] flex items-center gap-2">
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               Refresh System
             </button>
@@ -161,11 +195,11 @@ export default function StaffDashboard() {
                       <p className="text-xs text-slate-500">{node.type}</p>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className={`text-sm font-bold ${node.crowdDensity > 70 ? 'text-rose-400' : node.crowdDensity > 40 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                        {node.crowdDensity}%
+                      <span className={`text-sm font-bold ${(node.crowdDensity ?? 0) > 70 ? 'text-rose-400' : (node.crowdDensity ?? 0) > 40 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {node.crowdDensity ?? 0}%
                       </span>
                       <div className="w-16 h-1.5 bg-slate-800 rounded-full mt-1 overflow-hidden">
-                        <div className={`h-full ${node.crowdDensity > 70 ? 'bg-rose-500' : node.crowdDensity > 40 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${node.crowdDensity}%` }}></div>
+                        <div className={`h-full ${(node.crowdDensity ?? 0) > 70 ? 'bg-rose-500' : (node.crowdDensity ?? 0) > 40 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${node.crowdDensity ?? 0}%` }}></div>
                       </div>
                     </div>
                   </div>

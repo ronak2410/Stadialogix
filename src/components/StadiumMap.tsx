@@ -2,7 +2,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MapPin, ZoomIn, ZoomOut, Maximize, Navigation, Info } from 'lucide-react';
 import stadiumData from '@/data/stadium_data.json';
-import 'leaflet/dist/leaflet.css';
 import { StadiumNode } from '@/types';
 import { sanitizeHtml } from '@/utils/sanitize';
 

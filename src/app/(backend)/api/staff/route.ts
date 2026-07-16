@@ -64,7 +64,7 @@ CRITICAL RULES (NEVER BREAK THESE):
 4. Return ONLY a valid JSON array of alerts matching the schema. No markdown wrapping.`;
 
     const response = await generateWithRetry(
-      'gemini-flash-latest',
+      'gemini-2.5-flash',
       `Here is the current MetLife Stadium state JSON: ${JSON.stringify(stadiumData)}`,
       {
         systemInstruction,

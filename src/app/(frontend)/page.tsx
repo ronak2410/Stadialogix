@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import Link from 'next/link';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Html, Stars, Float, MeshDistortMaterial } from '@react-three/drei';
+import { OrbitControls, Html, Stars } from '@react-three/drei';
 import { MapPin, ShieldAlert, Navigation } from 'lucide-react';
 import * as THREE from 'three';
 
@@ -11,7 +11,7 @@ import * as THREE from 'three';
 function StadiumModel() {
   const groupRef = useRef<THREE.Group>(null);
   
-  useFrame((state: any) => {
+  useFrame((state) => {
     if (groupRef.current) {
       groupRef.current.rotation.y = state.clock.elapsedTime * 0.05; // Slower rotation for realism
     }

@@ -11,7 +11,7 @@ Object.defineProperty(window, 'speechSynthesis', {
 });
 
 // Mock SpeechSynthesisUtterance
-(global as any).SpeechSynthesisUtterance = vi.fn().mockImplementation(() => ({}));
+((global as unknown) as Record<string, unknown>).SpeechSynthesisUtterance = vi.fn().mockImplementation(() => ({}));
 
 // Mock ResizeObserver
 class ResizeObserver {
