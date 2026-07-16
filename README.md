@@ -26,6 +26,9 @@ StadiaLogix is a cutting-edge **AI-powered stadium companion app** designed spec
 
 ![StadiaLogix Tech Stack](./public/stadialogix_tech_stack.png)
 
+### System Data Flow
+![StadiaLogix System Data Flow](./public/stadialogix_architecture.png)
+
 - **Framework:** Next.js 16 (App Router)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS (Premium Glassmorphism & Dark Mode UI)
