@@ -31,7 +31,7 @@ User: "Where can I get sushi?"
 Assistant: "I checked the stadium directory, and there are no sushi vendors available at MetLife Stadium today. I can help you find pizza or hotdogs instead."`;
 
 export class AIService {
-  static async generateWithRetry(model: string, contents: unknown[], config: Record<string, unknown>, maxRetries = 3): Promise<string> {
+  static async generateWithRetry(model: string, contents: any[], config: Record<string, unknown>, maxRetries = 3): Promise<string> {
     let lastError: unknown;
     for (let i = 0; i < maxRetries; i++) {
       try {
