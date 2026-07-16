@@ -2,9 +2,13 @@
 
 ![StadiaLogix Tech Stack](https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white) ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white) ![Three.js](https://img.shields.io/badge/Three.js-black?style=for-the-badge&logo=three.js&logoColor=white) ![Gemini](https://img.shields.io/badge/Google_Gemini-4285F4?style=for-the-badge&logo=google&logoColor=white) ![Groq](https://img.shields.io/badge/Groq-f55036?style=for-the-badge&logo=groq&logoColor=white)
 
+![StadiaLogix Architecture & Showcase](./public/stadialogix_showcase.png)
+
 StadiaLogix is a cutting-edge **AI-powered stadium companion app** designed specifically for the 2026 World Cup at MetLife Stadium (NY/NJ). It combines real-time 3D navigation, agentic AI voice assistants, and augmented reality (AR) to completely redefine the fan experience and streamline staff operations.
 
 ## ✨ Key Features
+
+![StadiaLogix Key Features](./public/stadialogix_features.png)
 
 ### For Fans
 - **🗣️ Multi-Lingual AI Voice Assistant:** Navigate the stadium in English, Spanish, French, or German using Google Gemini and Groq AI models.
@@ -19,6 +23,8 @@ StadiaLogix is a cutting-edge **AI-powered stadium companion app** designed spec
 - **📈 Predictive Analytics:** Analyze wait times for restrooms and concessions to reroute crowd flow dynamically.
 
 ## 🏗️ Architecture & Tech Stack
+
+![StadiaLogix Tech Stack](./public/stadialogix_tech_stack.png)
 
 - **Framework:** Next.js 16 (App Router)
 - **Language:** TypeScript
