@@ -1,4 +1,3 @@
-/// <reference types="@react-three/fiber" />
 "use client";
 
 import { useRef, useState } from 'react';
@@ -115,7 +114,7 @@ function StadiumModel() {
 
 export default function LandingPage() {
   return (
-    <main className="w-full h-screen bg-slate-950 relative overflow-hidden flex flex-col">
+    <main className="w-full min-h-[100svh] bg-slate-950 relative overflow-x-hidden flex flex-col">
       {/* Title Overlay */}
       <header className="absolute top-10 left-0 right-0 z-10 flex flex-col items-center pointer-events-none">
         <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-fuchsia-500 to-cyan-500 flex items-center justify-center shadow-2xl mb-4">

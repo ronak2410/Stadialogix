@@ -200,7 +200,7 @@ export default function FanMode() {
   }, [input, imagePreview, messages]);
 
   return (
-    <div className={`flex flex-col h-[100svh] ${isARMode ? 'bg-transparent' : 'bg-slate-950'} font-sans relative overflow-hidden w-full max-w-[100vw]`}>
+    <div className={`flex flex-col min-h-[100svh] ${isARMode ? 'bg-transparent' : 'bg-slate-950'} font-sans relative overflow-x-hidden w-full max-w-[100vw]`}>
       
       {/* AR Camera Background Feed */}
       {isARMode && (
@@ -209,7 +209,7 @@ export default function FanMode() {
           autoPlay 
           playsInline 
           muted 
-          className="absolute inset-0 w-full h-full object-cover z-0 filter brightness-75"
+          className="fixed inset-0 w-full h-full object-cover z-0 filter brightness-75"
         />
       )}
 
@@ -274,7 +274,7 @@ export default function FanMode() {
       </header>
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col lg:flex-row w-full z-10 ${isARMode ? 'bg-black/20 backdrop-blur-sm' : ''}`}>
+      <div className={`flex flex-col lg:flex-row w-full z-10 lg:min-h-[calc(100svh-96px)] ${isARMode ? 'bg-black/20 backdrop-blur-sm' : ''}`}>
         
         {/* AR Player Stats Overlay */}
         {isARMode && showPlayerStats && (
@@ -293,12 +293,12 @@ export default function FanMode() {
         )}
 
         {/* Left Side: Interactive Map */}
-        <div className="lg:w-1/2 p-4 lg:p-6 border-b lg:border-b-0 lg:border-r border-slate-800/50 flex flex-col h-[42svh] lg:h-full min-h-[300px] lg:min-h-0 overflow-hidden">
+        <div className="lg:w-1/2 p-4 lg:p-6 border-b lg:border-b-0 lg:border-r border-slate-800/50 flex flex-col h-[42svh] min-h-[300px] lg:h-[calc(100svh-96px)] lg:min-h-[560px] overflow-hidden">
           <StadiumMap activeLocation={activeLocation} />
         </div>
 
         {/* Right Side: Chat Interface */}
-        <div className="lg:w-1/2 flex flex-col flex-1 lg:h-full min-h-[400px] lg:min-h-0 overflow-hidden relative">
+        <div className="lg:w-1/2 flex flex-col min-h-[520px] lg:h-[calc(100svh-96px)] lg:min-h-[560px] overflow-hidden relative">
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth" role="log" aria-live="polite" aria-atomic="false">
             {messages.map((msg, index) => {
               const orderMatch = msg.content.match(/\[RENDER_ORDER_CARD:(.+?)\]/);
