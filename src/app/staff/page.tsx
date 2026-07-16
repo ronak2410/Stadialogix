@@ -6,7 +6,6 @@ import Link from 'next/link';
 import stadiumData from '@/data/stadium_data.json';
 import dynamic from 'next/dynamic';
 
-// Dynamically import StadiumMap with ssr: false to prevent SSR Leaflet errors
 const StadiumMap = dynamic(() => import('@/components/StadiumMap'), {
   ssr: false,
 });
@@ -16,6 +15,7 @@ export default function StaffDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [liveNodes, setLiveNodes] = useState<any[]>(stadiumData.nodes);
   const [liveMatch, setLiveMatch] = useState<any>(null);
+  const [evacuationMode, setEvacuationMode] = useState(false);
 
   const fetchLiveFeed = async () => {
     try {
@@ -54,7 +54,7 @@ export default function StaffDashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50 font-sans relative overflow-hidden">
+    <div className="min-h-[100svh] bg-slate-950 text-slate-50 font-sans relative overflow-x-hidden">
       {/* Dark Theme Background */}
       <div className="absolute inset-0 bg-slate-950 -z-10"></div>
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
@@ -63,7 +63,7 @@ export default function StaffDashboard() {
       </div>
 
       {/* Header */}
-      <header className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-800/80 p-4 sticky top-0 z-20">
+      <header className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-800/80 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sticky top-0 z-20">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <Link href="/" className="p-2 hover:bg-slate-800 rounded-full transition-colors">
@@ -75,15 +75,27 @@ export default function StaffDashboard() {
             <div>
               <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-400 to-cyan-400">StadiaLogix Ops</h1>
               <p className="text-xs text-slate-400 flex items-center gap-2">
-                Command Center 
+                Digital Twin Command Center
                 {liveMatch && <span className="px-2 py-0.5 bg-slate-800 rounded-full text-[9px] text-fuchsia-300 font-mono border border-slate-700">LIVE: {liveMatch.team1} {liveMatch.score1} - {liveMatch.score2} {liveMatch.team2} ({liveMatch.time})</span>}
               </p>
             </div>
           </div>
-          <button onClick={fetchInsights} className="px-5 py-2 bg-gradient-to-r from-fuchsia-600 to-cyan-600 hover:from-fuchsia-500 hover:to-cyan-500 text-white rounded-full text-sm font-bold transition-all shadow-md flex items-center gap-2">
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            Refresh Insights
-          </button>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => {
+                const confirmed = window.confirm("CRITICAL WARNING: Are you sure you want to trigger a stadium-wide evacuation protocol? All fan apps will be overridden.");
+                if (confirmed) setEvacuationMode(!evacuationMode);
+              }}
+              className={`px-4 py-2 rounded-full text-xs font-bold transition-all shadow-md flex items-center gap-2 border ${evacuationMode ? 'bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.4)] animate-pulse' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+            >
+              <AlertTriangle className="w-4 h-4" />
+              {evacuationMode ? 'EVACUATION ACTIVE' : 'TRIGGER EVACUATION'}
+            </button>
+            <button onClick={fetchInsights} className="px-5 py-2 bg-gradient-to-r from-fuchsia-600 to-cyan-600 hover:from-fuchsia-500 hover:to-cyan-500 text-white rounded-full text-sm font-bold transition-all shadow-[0_0_20px_rgba(217,70,239,0.4)] flex items-center gap-2">
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              Refresh System
+            </button>
+          </div>
         </div>
       </header>
 
@@ -97,107 +109,84 @@ export default function StaffDashboard() {
             </div>
           ) : (
             alerts.map((alert, index) => (
-              <div key={index} className="bg-slate-900/60 backdrop-blur-lg border border-slate-700/50 rounded-2xl p-5 hover:border-slate-600 transition-colors shadow-lg">
-                <div className="flex items-start gap-4">
-                  <div className={`p-3 rounded-xl ${
-                    alert.severity?.toLowerCase() === 'high' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                    alert.severity?.toLowerCase() === 'medium' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                    'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  }`}>
-                    <AlertTriangle className="w-6 h-6" />
+              <div key={index} className="bg-slate-900/60 backdrop-blur-lg border border-slate-700/50 rounded-2xl p-5 hover:border-slate-600 transition-colors shadow-[0_0_20px_rgba(217,70,239,0.1)]">
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`p-2 rounded-lg ${alert.severity === 'Critical' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : alert.severity === 'High' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'}`}>
+                    <AlertTriangle className="w-5 h-5" />
                   </div>
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-fuchsia-400 uppercase tracking-wider bg-fuchsia-500/10 px-2 py-0.5 rounded border border-fuchsia-500/20">{alert.type}</span>
-                      <span className="text-[9px] font-extrabold text-slate-500 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">LIVE</span>
-                    </div>
-                    <div>
-                      <h3 className="text-slate-100 font-extrabold text-base leading-snug">{alert.title}</h3>
-                      <p className="text-slate-300 text-xs mt-1.5 leading-relaxed">{alert.description}</p>
-                    </div>
-                    {alert.action && (
-                      <div className="mt-3 p-3 bg-slate-950/50 border border-slate-800/80 rounded-xl">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-[9px] font-extrabold text-cyan-400 uppercase tracking-widest block">Response Protocol</span>
-                          <button 
-                            className="bg-cyan-900/50 hover:bg-cyan-800 text-cyan-300 border border-cyan-700 rounded px-2 py-0.5 text-[9px] font-bold transition-colors shadow-inner"
-                            onClick={(e) => {
-                              const btn = e.currentTarget;
-                              btn.innerText = "Executing...";
-                              setTimeout(() => {
-                                btn.innerText = "Protocol Deployed ✓";
-                                btn.className = "bg-emerald-900/50 text-emerald-300 border border-emerald-700 rounded px-2 py-0.5 text-[9px] font-bold cursor-default transition-all";
-                              }, 1500);
-                            }}
-                          >
-                            Execute Protocol
-                          </button>
-                        </div>
-                        <p className="text-[11px] text-slate-300 leading-normal">{alert.action}</p>
-                      </div>
-                    )}
-                  </div>
+                  <span className="text-xs font-mono px-2 py-1 bg-slate-800 rounded-md text-slate-400 border border-slate-700">
+                    {alert.time}
+                  </span>
+                </div>
+                <h3 className="font-bold text-slate-200 mb-1">{alert.title}</h3>
+                <p className="text-sm text-slate-400 mb-4">{alert.description}</p>
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <MapPin className="w-3.5 h-3.5" /> {alert.location}
                 </div>
               </div>
             ))
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Map Area */}
-          <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-lg border border-slate-700/50 rounded-3xl p-6 shadow-xl flex flex-col">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-slate-200 flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-fuchsia-400" /> Live Stadium Heatmap
-              </h2>
-              <div className="flex gap-2">
-                <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-bold flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> Live Integration Active
-                </span>
-              </div>
+        {/* Digital Twin Map Interface */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl overflow-hidden shadow-2xl relative">
+            <div className="absolute top-4 left-4 z-[1000] bg-slate-950/80 backdrop-blur border border-slate-700 p-3 rounded-xl pointer-events-none shadow-lg">
+               <h3 className="text-sm font-bold text-fuchsia-400 flex items-center gap-2">
+                 <Activity className="w-4 h-4 animate-pulse" /> Live Crowd Density
+               </h3>
+               <p className="text-xs text-slate-400 mt-1">Digital Twin Sensor Feed</p>
+               {evacuationMode && (
+                 <div className="mt-2 bg-red-500/20 border border-red-500 p-2 rounded text-red-400 text-xs font-bold animate-pulse">
+                   EVACUATION ROUTING ACTIVE
+                 </div>
+               )}
             </div>
-            <div className="flex-1 min-h-[450px] bg-slate-950/50 rounded-2xl border border-slate-800/80 overflow-hidden relative shadow-inner">
-              <StadiumMap activeLocation="" showHeatmap={true} />
+            {/* The StadiumMap component is used as the Digital Twin visualizer */}
+            <div className={`h-[600px] w-full bg-slate-950 transition-colors duration-1000 ${evacuationMode ? 'bg-red-950/30' : ''}`}>
+              <StadiumMap activeLocation="" showHeatmap={true} evacuationMode={evacuationMode} />
             </div>
           </div>
 
-          {/* Insights Panel */}
-          <div className="bg-slate-900/60 backdrop-blur-lg border border-slate-700/50 rounded-3xl p-6 shadow-xl h-fit">
-            <h2 className="text-lg font-bold text-slate-200 flex items-center gap-2 mb-6">
-              <Activity className="w-5 h-5 text-cyan-400" /> Node Status
-            </h2>
-            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-800">
-              {liveNodes.map((node: any) => (
-                <div key={node.id} className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 hover:border-slate-600 transition-colors">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="font-bold text-slate-200 text-sm">{node.name}</span>
-                    <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md border ${
-                      node.crowdDensity > 80 ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                      node.crowdDensity > 50 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                      'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                    }`}>
-                      {node.crowdDensity > 80 ? 'CRITICAL' : node.crowdDensity > 50 ? 'WARNING' : 'STABLE'}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-3">
+          <div className="space-y-6">
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 shadow-lg">
+              <h3 className="font-bold text-lg text-slate-200 mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5 text-cyan-400" /> Live Sector Status
+              </h3>
+              <div className="space-y-4">
+                {liveNodes.slice(0, 5).map((node, i) => (
+                  <div key={i} className="flex items-center justify-between">
                     <div>
-                      <div className="flex justify-between text-[10px] mb-1">
-                        <span className="text-slate-400 flex items-center gap-1"><Users className="w-3 h-3"/> Crowd Density</span>
-                        <span className="text-slate-300 font-bold">{node.crowdDensity}%</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all duration-500 ${node.crowdDensity > 80 ? 'bg-red-500' : node.crowdDensity > 50 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${node.crowdDensity}%` }}></div>
-                      </div>
+                      <p className="text-sm font-medium text-slate-300">{node.name}</p>
+                      <p className="text-xs text-slate-500">{node.type}</p>
                     </div>
-                    
-                    <div className="flex justify-between items-center text-[10px] pt-1 border-t border-slate-800">
-                      <span className="text-slate-400 flex items-center gap-1"><Thermometer className="w-3 h-3"/> Operations State</span>
-                      <span className="text-emerald-400 font-bold">Optimal</span>
+                    <div className="flex flex-col items-end">
+                      <span className={`text-sm font-bold ${node.crowdDensity > 70 ? 'text-rose-400' : node.crowdDensity > 40 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {node.crowdDensity}%
+                      </span>
+                      <div className="w-16 h-1.5 bg-slate-800 rounded-full mt-1 overflow-hidden">
+                        <div className={`h-full ${node.crowdDensity > 70 ? 'bg-rose-500' : node.crowdDensity > 40 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${node.crowdDensity}%` }}></div>
+                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 shadow-lg">
+              <h3 className="font-bold text-lg text-slate-200 mb-4 flex items-center gap-2">
+                <Thermometer className="w-5 h-5 text-rose-400" /> Environment
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                  <p className="text-xs text-slate-400 mb-1">Temperature</p>
+                  <p className="text-xl font-bold text-slate-200">72°F</p>
                 </div>
-              ))}
+                <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                  <p className="text-xs text-slate-400 mb-1">AQI</p>
+                  <p className="text-xl font-bold text-emerald-400">45 (Good)</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

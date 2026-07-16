@@ -4,11 +4,21 @@
   --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 2, 6, 23; /* slate-950 */
   --background-end-rgb: 2, 6, 23;
+  color-scheme: dark;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-start-rgb));
+}
+
+html {
+  scroll-padding-top: calc(1rem + env(safe-area-inset-top));
+}
+
+html,
+body {
+  overflow-x: hidden;
 }
 
 @keyframes gradient-xy {

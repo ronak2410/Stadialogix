@@ -1,52 +1,162 @@
+/// <reference types="@react-three/fiber" />
+"use client";
+
+import { useRef, useState } from 'react';
 import Link from 'next/link';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, Html, Stars, Float, MeshDistortMaterial } from '@react-three/drei';
 import { MapPin, ShieldAlert, Navigation } from 'lucide-react';
+import * as THREE from 'three';
+
+// 3D Stadium Component
+function StadiumModel() {
+  const groupRef = useRef<THREE.Group>(null);
+  
+  useFrame((state: any) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y = state.clock.elapsedTime * 0.05; // Slower rotation for realism
+    }
+  });
+
+  return (
+    <group ref={groupRef} position={[0, -1, 0]}>
+      {/* Pitch (Grass) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+        <planeGeometry args={[12, 8]} />
+        <meshStandardMaterial color="#16a34a" roughness={1} metalness={0.1} />
+      </mesh>
+      
+      {/* Field Lines (Outer Boundary) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+        <planeGeometry args={[11, 7]} />
+        <meshBasicMaterial color="#ffffff" wireframe={true} transparent opacity={0.5} />
+      </mesh>
+
+      {/* Center Circle */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+        <ringGeometry args={[1.4, 1.5, 32]} />
+        <meshBasicMaterial color="#ffffff" side={THREE.DoubleSide} />
+      </mesh>
+      
+      {/* Center Line */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+        <planeGeometry args={[0.1, 7]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+
+      {/* Penalty Boxes */}
+      {[-4.5, 4.5].map((x, i) => (
+        <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.01, 0]}>
+          <planeGeometry args={[2, 4]} />
+          <meshBasicMaterial color="#ffffff" wireframe={true} />
+        </mesh>
+      ))}
+
+      {/* Goalposts */}
+      {[-5.5, 5.5].map((x, i) => (
+        <group key={`goal-${i}`} position={[x, 0.5, 0]}>
+          <mesh position={[0, 0, -1]}>
+            <cylinderGeometry args={[0.05, 0.05, 1]} />
+            <meshStandardMaterial color="#ffffff" />
+          </mesh>
+          <mesh position={[0, 0, 1]}>
+            <cylinderGeometry args={[0.05, 0.05, 1]} />
+            <meshStandardMaterial color="#ffffff" />
+          </mesh>
+          <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0.5, 0]}>
+            <cylinderGeometry args={[0.05, 0.05, 2]} />
+            <meshStandardMaterial color="#ffffff" />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Tier 1 Seating Bowl (Lower) */}
+      <mesh position={[0, 0.8, 0]}>
+        <cylinderGeometry args={[8.5, 6, 1.6, 64, 1, true]} />
+        {/* Adjusted to a lighter metallic slate to reflect the fuchsia/cyan point lights */}
+        <meshStandardMaterial color="#475569" metalness={0.6} roughness={0.3} side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* Tier 2 Seating Bowl (Upper) */}
+      <mesh position={[0, 2.4, 0]}>
+        <cylinderGeometry args={[11, 8.5, 2, 64, 1, true]} />
+        <meshStandardMaterial color="#334155" metalness={0.7} roughness={0.4} side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* Stadium Roof / Canopy */}
+      <mesh position={[0, 3.5, 0]}>
+        <cylinderGeometry args={[10.5, 11.5, 0.2, 64, 1, true]} />
+        <meshStandardMaterial color="#06b6d4" side={THREE.DoubleSide} transparent opacity={0.6} metalness={0.8} />
+      </mesh>
+
+      {/* Floating UI Cards attached to the 3D scene */}
+      <Html position={[-6, 4, 0]} center>
+        <Link href="/fan" aria-label="Enter Fan Mode" className="block w-64 p-6 rounded-3xl bg-slate-900/80 backdrop-blur-xl border border-fuchsia-500/50 hover:bg-slate-800 transition-all shadow-[0_0_30px_rgba(217,70,239,0.3)] hover:scale-105 transform cursor-pointer">
+          <div className="w-12 h-12 rounded-full bg-fuchsia-500/20 flex items-center justify-center mb-4">
+            <Navigation className="w-6 h-6 text-fuchsia-400" />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Fan Mode</h2>
+          <p className="text-slate-400 text-xs">Enter the interactive smart assistant & 3D routing experience.</p>
+        </Link>
+      </Html>
+
+      <Html position={[6, 4, 0]} center>
+        <Link href="/staff" aria-label="Enter Staff Mode" className="block w-64 p-6 rounded-3xl bg-slate-900/80 backdrop-blur-xl border border-cyan-500/50 hover:bg-slate-800 transition-all shadow-[0_0_30px_rgba(6,182,212,0.3)] hover:scale-105 transform cursor-pointer">
+          <div className="w-12 h-12 rounded-full bg-cyan-500/20 flex items-center justify-center mb-4">
+            <ShieldAlert className="w-6 h-6 text-cyan-400" />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Staff Ops</h2>
+          <p className="text-slate-400 text-xs">Enter the Digital Twin command center and crowd heatmap.</p>
+        </Link>
+      </Html>
+    </group>
+  );
+}
 
 export default function LandingPage() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-50 font-sans p-4 relative overflow-hidden">
-      <div className="max-w-3xl text-center space-y-8 relative z-10">
-        <div className="flex justify-center mb-6">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-fuchsia-500 to-cyan-500 flex items-center justify-center shadow-2xl shadow-fuchsia-500/30">
-             <MapPin className="w-10 h-10 text-white" />
-          </div>
+    <main className="w-full h-screen bg-slate-950 relative overflow-hidden flex flex-col">
+      {/* Title Overlay */}
+      <header className="absolute top-10 left-0 right-0 z-10 flex flex-col items-center pointer-events-none">
+        <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-fuchsia-500 to-cyan-500 flex items-center justify-center shadow-2xl mb-4">
+           <MapPin className="w-8 h-8 text-white" />
         </div>
-        
-        <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-400 to-cyan-400">
-          StadiaLogix
+        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-400 to-cyan-400 drop-shadow-lg">
+          StadiaLogix 3D
         </h1>
-        <p className="text-xl text-slate-400 max-w-2xl mx-auto">
-          GenAI-Powered Tournament Operations & Fan Experience Platform for the 2026 World Cup.
+        <p className="text-lg text-slate-400 max-w-xl mx-auto text-center mt-4">
+          Next-Generation Digital Twin & Fan Assistant
         </p>
-        
-        <div className="grid md:grid-cols-2 gap-6 mt-16 text-left">
-          {/* Fan Mode Card */}
-          <Link href="/fan" className="group block p-8 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 hover:border-fuchsia-500/50 hover:bg-slate-800/80 transition-all shadow-lg hover:shadow-fuchsia-500/20">
-            <div className="w-14 h-14 rounded-full bg-fuchsia-500/10 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-fuchsia-500/20 transition-all">
-              <Navigation className="w-7 h-7 text-fuchsia-400" />
-            </div>
-            <h2 className="text-2xl font-bold mb-3 text-slate-100 group-hover:text-fuchsia-400 transition-colors">Fan Mode</h2>
-            <p className="text-slate-400 text-sm leading-relaxed">
-              Interactive smart assistant. Features an intelligent audio guide and a real-time synchronized stadium map for accessible routing.
-            </p>
-          </Link>
+      </header>
 
-          {/* Staff Mode Card */}
-          <Link href="/staff" className="group block p-8 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 hover:border-cyan-500/50 hover:bg-slate-800/80 transition-all shadow-lg hover:shadow-cyan-500/20">
-            <div className="w-14 h-14 rounded-full bg-cyan-500/10 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-cyan-500/20 transition-all">
-              <ShieldAlert className="w-7 h-7 text-cyan-400" />
-            </div>
-            <h2 className="text-2xl font-bold mb-3 text-slate-100 group-hover:text-cyan-400 transition-colors">Staff Ops Dashboard</h2>
-            <p className="text-slate-400 text-sm leading-relaxed">
-              Command center view. Watch the AI analyze raw stadium data to generate predictive crowd alerts and real-time operational decisions.
-            </p>
-          </Link>
+      {/* 3D Canvas */}
+      <div className="flex-1 w-full h-full cursor-grab active:cursor-grabbing">
+        <Canvas camera={{ position: [0, 5, 12], fov: 45 }}>
+          <color attach="background" args={["#020617"]} />
+          <ambientLight intensity={0.5} />
+          <pointLight position={[10, 10, 10]} intensity={1.5} color="#d946ef" />
+          <pointLight position={[-10, 10, -10]} intensity={1.5} color="#06b6d4" />
+          <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+          <StadiumModel />
+          <OrbitControls 
+            enableZoom={true} 
+            enablePan={false} 
+            minPolarAngle={Math.PI / 4} 
+            maxPolarAngle={Math.PI / 2.5}
+            minDistance={8}
+            maxDistance={20}
+          />
+        </Canvas>
+      </div>
+
+      {/* Instructions Overlay */}
+      <div className="absolute bottom-8 left-0 right-0 z-10 flex justify-center pointer-events-none">
+        <div className="bg-slate-900/60 backdrop-blur-md px-6 py-2 rounded-full border border-slate-800">
+          <p className="text-slate-400 text-sm font-medium tracking-wide">
+            Drag to rotate • Scroll to zoom
+          </p>
         </div>
       </div>
-      
-      {/* 3D Animated Background */}
-      <div className="absolute top-0 -left-4 w-96 h-96 bg-fuchsia-500 rounded-full mix-blend-multiply filter blur-[120px] opacity-30 animate-blob pointer-events-none"></div>
-      <div className="absolute top-0 -right-4 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-[120px] opacity-30 animate-blob animation-delay-2000 pointer-events-none"></div>
-      <div className="absolute -bottom-8 left-20 w-96 h-96 bg-emerald-500 rounded-full mix-blend-multiply filter blur-[120px] opacity-30 animate-blob animation-delay-4000 pointer-events-none"></div>
-    </div>
+    </main>
   );
 }

@@ -3,6 +3,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { MapPin, ZoomIn, ZoomOut, Maximize, Navigation, Info } from 'lucide-react';
 import stadiumData from '@/data/stadium_data.json';
 import 'leaflet/dist/leaflet.css';
+import { StadiumNode } from '@/types';
+import { sanitizeHtml } from '@/utils/sanitize';
 
 // Geographic Coordinates for all 21 nodes centered on MetLife Stadium [40.8135, -74.0744]
 const COORDINATES: Record<string, [number, number]> = {
@@ -46,19 +48,22 @@ interface StadiumMapProps {
   activeLocation: string;
   accessibilityMode?: boolean;
   showHeatmap?: boolean;
+  evacuationMode?: boolean;
 }
 
-export default function StadiumMap({ 
+const StadiumMap = React.memo(function StadiumMap({ 
   activeLocation, 
   accessibilityMode = false, 
-  showHeatmap = false 
+  showHeatmap = false,
+  evacuationMode = false
 }: StadiumMapProps) {
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<Record<string, any>>({});
-  const routingLineRef = useRef<any>(null);
-  const heatmapLayersRef = useRef<any[]>([]);
+  const markersRef = useRef<Record<string, L.Marker>>({});
+  const routingLineRef = useRef<L.Polyline | null>(null);
+  const heatmapLayersRef = useRef<L.Circle[]>([]);
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   // Helper to match activeLocation string to a node
   const getMatchingNode = (text: string) => {
@@ -120,7 +125,7 @@ export default function StadiumMap({
   };
 
   // HTML Content Generator for Custom Pins to match the design aesthetics of Google Maps
-  const createMarkerHtml = (node: any, isHighlighted: boolean) => {
+  const createMarkerHtml = (node: StadiumNode, isHighlighted: boolean) => {
     let bgColor = 'bg-slate-600';
     let icon = '📍';
     let pulseDiv = '';
@@ -207,7 +212,7 @@ export default function StadiumMap({
       icon = '👟';
     }
 
-    return `
+    return sanitizeHtml(`
       <div class="relative flex flex-col items-center group">
         ${pulseDiv}
         <div class="w-7 h-7 ${bgColor} rounded-full flex items-center justify-center text-[13px] shadow-md border-2 border-white transition-all transform group-hover:scale-110 z-10">
@@ -218,17 +223,24 @@ export default function StadiumMap({
           ${node.name}
         </div>
       </div>
-    `;
+    `);
   };
 
   // Leaflet Initialization & State Syncing
   useEffect(() => {
-    let mapInstance: any;
+    let active = true;
+    let mapInstance: L.Map | null = null;
 
     const initMap = async () => {
       const L = (await import('leaflet')).default;
 
+      if (!active) return;
       if (!mapContainerRef.current) return;
+
+      // Prevent double initialization if container already has a map
+      if ((mapContainerRef.current as HTMLDivElement & { _leaflet_id?: boolean })._leaflet_id) {
+        return;
+      }
 
       // Initialize map instance
       mapInstance = L.map(mapContainerRef.current, {
@@ -240,6 +252,10 @@ export default function StadiumMap({
       });
 
       mapRef.current = mapInstance;
+      setMapReady(true);
+      setTimeout(() => {
+        mapInstance?.invalidateSize();
+      }, 0);
 
       // 1. Satellite Base Tiles (Esri World Imagery)
       L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -265,54 +281,71 @@ export default function StadiumMap({
       }).addTo(mapInstance);
 
       // Add all 21 data nodes as Leaflet markers
-      stadiumData.nodes.forEach((node: any) => {
-        const coords = COORDINATES[node.id];
+      stadiumData.nodes.forEach((node: unknown) => {
+        const typedNode = node as StadiumNode;
+        const coords = COORDINATES[typedNode.id];
         if (!coords) return;
 
         // Custom DivIcon
         const customIcon = L.divIcon({
           className: 'custom-leaflet-marker',
-          html: createMarkerHtml(node, false),
+          html: createMarkerHtml(typedNode, false),
           iconSize: [60, 45],
           iconAnchor: [30, 31]
         });
 
         // Popup Content
-        const popupHtml = `
+        let waitTimeHtml = '';
+        if (typedNode.type === 'vendor') {
+          // Phase 3: Predictive Concession Wait Time (derived from crowd density)
+          const estWaitMins = Math.max(2, Math.floor((typedNode.crowdDensity || 10) / 4));
+          const waitColor = estWaitMins > 15 ? 'text-red-400' : estWaitMins > 8 ? 'text-amber-400' : 'text-emerald-400';
+          waitTimeHtml = `
+            <div class="mt-2 text-[10px] bg-slate-900 rounded p-1.5 border border-slate-700">
+              <span class="text-slate-400 block mb-0.5">AI Wait Time Prediction:</span>
+              <span class="font-bold ${waitColor}">${estWaitMins} mins</span>
+              ${estWaitMins > 10 ? '<br/><span class="text-[9px] text-amber-300">Tip: Check Global Tacos for faster service!</span>' : ''}
+            </div>
+          `;
+        }
+
+        const popupHtml = sanitizeHtml(`
           <div class="p-3 text-slate-100 font-sans max-w-[240px]">
             <h3 class="font-extrabold text-sm mb-1 text-white flex items-center gap-1.5 border-b border-slate-700/60 pb-1.5">
-              ${node.type === 'gate' ? '🚪' : node.type === 'vendor' ? '🍕' : '📍'} ${node.name}
+              ${typedNode.type === 'gate' ? '🚪' : typedNode.type === 'vendor' ? '🍕' : '📍'} ${typedNode.name}
             </h3>
+            <p class="text-[11px] leading-relaxed text-slate-300 mt-1.5 font-medium">${typedNode.description}</p>
+            ${waitTimeHtml}
             <div class="space-y-1.5 text-xs">
-              ${node.currentQueueTime !== undefined ? `<p class="flex justify-between"><span class="text-slate-400">Queue Time:</span> <span class="font-bold text-cyan-400">${node.currentQueueTime} mins</span></p>` : ''}
-              ${node.crowdDensity !== undefined ? `<p class="flex justify-between"><span class="text-slate-400">Crowd Density:</span> <span class="font-bold ${node.crowdDensity > 80 ? 'text-red-400' : node.crowdDensity > 50 ? 'text-amber-400' : 'text-emerald-400'}">${node.crowdDensity}%</span></p>` : ''}
-              ${node.wasteBinLevel !== undefined ? `<p class="flex justify-between"><span class="text-slate-400">Waste Level:</span> <span class="font-bold ${node.wasteBinLevel > 80 ? 'text-red-400' : 'text-slate-300'}">${node.wasteBinLevel}%</span></p>` : ''}
-              ${node.offerings ? `<p class="text-slate-400 mt-1"><span class="block font-bold text-white mb-0.5">Offerings:</span> ${node.offerings.join(', ')}</p>` : ''}
-              ${node.location ? `<p class="text-slate-400 mt-1"><span class="block font-bold text-white mb-0.5">Location:</span> ${node.location}</p>` : ''}
-              ${node.details ? `<p class="text-slate-400 mt-1 text-[11px] leading-relaxed">${node.details}</p>` : ''}
+              ${typedNode.currentQueueTime !== undefined ? `<p class="flex justify-between"><span class="text-slate-400">Queue Time:</span> <span class="font-bold text-cyan-400">${typedNode.currentQueueTime} mins</span></p>` : ''}
+              ${typedNode.crowdDensity !== undefined ? `<p class="flex justify-between"><span class="text-slate-400">Crowd Density:</span> <span class="font-bold ${typedNode.crowdDensity > 80 ? 'text-red-400' : typedNode.crowdDensity > 50 ? 'text-amber-400' : 'text-emerald-400'}">${typedNode.crowdDensity}%</span></p>` : ''}
+              ${typedNode.wasteBinLevel !== undefined ? `<p class="flex justify-between"><span class="text-slate-400">Waste Level:</span> <span class="font-bold ${typedNode.wasteBinLevel > 80 ? 'text-red-400' : 'text-slate-300'}">${typedNode.wasteBinLevel}%</span></p>` : ''}
+              ${typedNode.offerings ? `<p class="text-slate-400 mt-1"><span class="block font-bold text-white mb-0.5">Offerings:</span> ${typedNode.offerings.join(', ')}</p>` : ''}
+              ${typedNode.location ? `<p class="text-slate-400 mt-1"><span class="block font-bold text-white mb-0.5">Location:</span> ${typedNode.location}</p>` : ''}
+              ${typedNode.details ? `<p class="text-slate-400 mt-1 text-[11px] leading-relaxed">${typedNode.details}</p>` : ''}
             </div>
-            ${node.isAccessible ? `
+            ${typedNode.isAccessible ? `
               <div class="mt-2.5 pt-1.5 border-t border-slate-700/60 flex items-center gap-1.5 text-emerald-400 font-bold text-[10px]">
                 <span class="p-1 bg-emerald-500/10 rounded border border-emerald-500/20"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 9a3 3 0 1 1 6 0 3 3 0 0 1-6 0z"/><path d="M12 12v6"/><path d="M12 18H9m6 0h-3m-6.5-6h13"/></svg></span> Accessible Area
               </div>
             ` : ''}
-            ${node.dynamicRouting ? `
+            ${typedNode.dynamicRouting ? `
               <div class="mt-2.5 pt-1.5 border-t border-slate-700/60 flex items-start gap-1.5 text-amber-400 text-[10px] leading-snug font-medium">
                 <span class="p-0.5 mt-0.5"><svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></span>
-                <div><span class="font-extrabold block text-amber-300">Reroute Advisory</span> ${node.dynamicRouting}</div>
+                <div><span class="font-extrabold block text-amber-300">Reroute Advisory</span> ${typedNode.dynamicRouting}</div>
               </div>
             ` : ''}
           </div>
-        `;
+        `);
 
         const marker = L.marker(coords, { icon: customIcon })
           .bindPopup(popupHtml, {
             maxWidth: 260,
             className: 'custom-leaflet-popup'
           })
-          .addTo(mapInstance);
+          .addTo(mapInstance!);
 
-        markersRef.current[node.id] = marker;
+        markersRef.current[typedNode.id] = marker;
       });
     };
 
@@ -320,10 +353,22 @@ export default function StadiumMap({
 
     // Clean up
     return () => {
+      active = false;
       if (mapInstance) {
         mapInstance.remove();
+        mapRef.current = null;
+        setMapReady(false);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      mapRef.current?.invalidateSize();
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Sync Heatmap circles (Phase 8: Staff Side Overlay)
@@ -361,7 +406,7 @@ export default function StadiumMap({
         });
       });
     }
-  }, [showHeatmap]);
+  }, [showHeatmap, mapReady]);
 
   // Sync Active Location (panning, opening popups, drawing walking routes)
   useEffect(() => {
@@ -410,25 +455,32 @@ export default function StadiumMap({
           pathPoints = [gateCoord, adaElevatorCoord, coords];
         }
 
+        // Phase 3: Evacuation Routing Override
+        if (evacuationMode) {
+          // Route everyone to closest outer highway/gate
+          pathPoints = [coords, [40.8135, -74.0744], [40.8188, -74.0682]]; // Route to Rideshare/Exit
+        }
+
         // Draw route polyline
         const routeLine = L.polyline(pathPoints, {
-          color: accessibilityMode ? '#06b6d4' : '#f43f5e',
-          weight: accessibilityMode ? 5 : 4,
+          color: evacuationMode ? '#ef4444' : accessibilityMode ? '#06b6d4' : '#f43f5e',
+          weight: evacuationMode ? 6 : accessibilityMode ? 5 : 4,
           opacity: 0.8,
-          className: accessibilityMode ? 'routing-polyline accessible-polyline' : 'routing-polyline'
+          className: evacuationMode ? 'routing-polyline animate-pulse' : accessibilityMode ? 'routing-polyline accessible-polyline' : 'routing-polyline'
         }).addTo(map);
 
         routingLineRef.current = routeLine;
       });
     }
 
-  }, [activeLocation, accessibilityMode]);
+  }, [activeLocation, accessibilityMode, mapReady]);
 
   // Update HTML styles dynamically when node highlighted
   useEffect(() => {
     import('leaflet').then((LModule) => {
       const L = LModule.default;
-      stadiumData.nodes.forEach((node: any) => {
+      stadiumData.nodes.forEach((n: unknown) => {
+        const node = n as StadiumNode;
         const marker = markersRef.current[node.id];
         if (marker) {
           const isHighlighted = node.id === highlightedNodeId;
@@ -443,7 +495,7 @@ export default function StadiumMap({
         }
       });
     });
-  }, [highlightedNodeId]);
+  }, [highlightedNodeId, mapReady]);
 
   // Reset view to overview MetLife Stadium
   const resetView = () => {
@@ -459,6 +511,15 @@ export default function StadiumMap({
       <style>{`
         .leaflet-container {
           background: #182312 !important; /* Grass swamp fallback background */
+        }
+        .leaflet-control-attribution {
+          background: rgba(15, 23, 42, 0.7) !important;
+          color: #94a3b8 !important;
+          backdrop-filter: blur(4px) !important;
+          border-top-left-radius: 8px;
+        }
+        .leaflet-control-attribution a {
+          color: #38bdf8 !important;
         }
         .custom-leaflet-popup .leaflet-popup-content-wrapper {
           background: rgba(15, 23, 42, 0.95) !important;
@@ -522,7 +583,7 @@ export default function StadiumMap({
       </div>
 
       {/* Map Container */}
-      <div ref={mapContainerRef} className="w-full flex-1 rounded-2xl overflow-hidden z-10 border border-slate-800 shadow-inner"></div>
+      <div ref={mapContainerRef} aria-hidden="true" className="w-full flex-1 rounded-2xl overflow-hidden z-10 border border-slate-800 shadow-inner"></div>
       
       {/* Dynamic Routing Alert Banner */}
       <div className="absolute bottom-6 left-6 right-6 flex justify-center z-[1000] pointer-events-none">
@@ -542,4 +603,6 @@ export default function StadiumMap({
       </div>
     </div>
   );
-}
+});
+
+export default StadiumMap;
