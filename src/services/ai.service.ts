@@ -100,7 +100,7 @@ export class AIService {
     return mockResponse;
   }
 
-  static async generateChatResponse(messages: ChatMessage[]): Promise<string> {
+  static async generateChatResponse(messages: ChatMessage[], language?: string): Promise<string> {
     if (!process.env.GEMINI_API_KEY) {
       throw new Error('Gemini API Key is missing.');
     }
@@ -123,7 +123,7 @@ export class AIService {
       return await this.generateWithRetry(
         'gemini-2.5-flash',
         payloadContents,
-        { systemInstruction }
+        { systemInstruction: language ? `${systemInstruction}\n\n13. LANGUAGE OVERRIDE: The user has selected the language code '${language}'. You MUST reply entirely in this language.` : systemInstruction }
       );
     } catch (error: unknown) {
       console.error('Gemini failed. Attempting fallback to Groq...', (error as Error).message);

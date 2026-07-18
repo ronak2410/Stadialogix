@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { MapPin, ZoomIn, ZoomOut, Maximize, Navigation, Info } from 'lucide-react';
 import stadiumData from '@/data/stadium_data.json';
 import { StadiumNode } from '@/types';
@@ -64,8 +64,8 @@ const StadiumMap = React.memo(function StadiumMap({
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
-  // Helper to match activeLocation string to a node
-  const getMatchingNode = (text: string) => {
+// Helper to match activeLocation string to a node
+const getMatchingNode = (text: string) => {
     if (!text) return null;
     const lower = text.toLowerCase();
 
@@ -497,11 +497,11 @@ const StadiumMap = React.memo(function StadiumMap({
   }, [highlightedNodeId, mapReady]);
 
   // Reset view to overview MetLife Stadium
-  const resetView = () => {
+  const resetView = useCallback(() => {
     if (mapRef.current) {
       mapRef.current.setView([40.8135, -74.0744], 15, { animate: true });
     }
-  };
+  }, []);
 
   return (
     <div className="relative w-full h-full flex flex-col items-stretch p-4 bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-slate-700/50 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden select-none">
@@ -562,6 +562,7 @@ const StadiumMap = React.memo(function StadiumMap({
           onClick={() => mapRef.current?.zoomIn()} 
           className="p-2 bg-slate-950/80 hover:bg-slate-900 text-slate-300 rounded-full backdrop-blur shadow border border-slate-800 transition-colors"
           title="Zoom In"
+          aria-label="Zoom In"
         >
            <ZoomIn className="w-4 h-4" />
         </button>
@@ -569,6 +570,7 @@ const StadiumMap = React.memo(function StadiumMap({
           onClick={() => mapRef.current?.zoomOut()} 
           className="p-2 bg-slate-950/80 hover:bg-slate-900 text-slate-300 rounded-full backdrop-blur shadow border border-slate-800 transition-colors"
           title="Zoom Out"
+          aria-label="Zoom Out"
         >
            <ZoomOut className="w-4 h-4" />
         </button>
@@ -576,6 +578,7 @@ const StadiumMap = React.memo(function StadiumMap({
           onClick={resetView} 
           className="p-2 bg-slate-950/80 hover:bg-slate-900 text-slate-300 rounded-full backdrop-blur shadow border border-slate-800 transition-colors"
           title="Reset View"
+          aria-label="Reset View"
         >
            <Maximize className="w-4 h-4" />
         </button>

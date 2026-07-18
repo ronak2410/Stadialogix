@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
 CRITICAL RULES (NEVER BREAK THESE):
 1. ONLY analyze the provided raw stadium data JSON (queue times, crowd density, waste bin levels).
 2. DO NOT invent or hallucinate gates, metrics, or alerts.
-3. Predict 2-3 immediate operational bottlenecks based ONLY on the data. For example: >80% crowd density at a gate requires rerouting. >85% waste requires sanitation.
+3. Predict 2-3 immediate operational bottlenecks based ONLY on the data. For example: >80% crowd density at a gate requires rerouting. >85% waste requires sanitation. MUST explicitly include at least one SUSTAINABILITY alert (e.g. waste management or eco-transit).
 4. Return ONLY a valid JSON array of alerts matching the schema. No markdown wrapping.`;
 
     const response = await generateWithRetry(

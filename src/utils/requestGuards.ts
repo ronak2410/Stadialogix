@@ -2,6 +2,7 @@ export const SECURITY_HEADERS = {
   'Cache-Control': 'no-store',
   'X-Content-Type-Options': 'nosniff',
 };
+import { z } from 'zod';
 
 const WINDOW_MS = 60_000;
 const MAX_REQUESTS = 30;
@@ -28,43 +29,22 @@ export function checkRateLimit(key: string, now = Date.now()) {
   return { allowed: true, remaining: MAX_REQUESTS - current.count, resetAt: current.resetAt };
 }
 
+export const chatPayloadSchema = z.object({
+  messages: z.array(
+    z.object({
+      role: z.enum(['user', 'assistant', 'system']),
+      content: z.string().max(4000),
+      image: z.string().regex(/^data:image\//).max(3000000).optional(),
+    })
+  ).min(1).max(20),
+  language: z.string().optional(),
+});
+
 export function validateChatPayload(payload: unknown) {
-  if (!payload || typeof payload !== 'object') {
-    return { ok: false as const, error: 'Request body must be a JSON object.' };
+  try {
+    const data = chatPayloadSchema.parse(payload);
+    return { ok: true as const, messages: data.messages, language: data.language };
+  } catch (error: any) {
+    return { ok: false as const, error: error.errors?.[0]?.message || 'Invalid payload format' };
   }
-
-  const messages = (payload as { messages?: unknown }).messages;
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return { ok: false as const, error: 'Messages array is required.' };
-  }
-
-  if (messages.length > 20) {
-    return { ok: false as const, error: 'Too many messages in one request.' };
-  }
-
-  const normalized = messages.map((message) => {
-    if (!message || typeof message !== 'object') return null;
-    const candidate = message as { role?: unknown; content?: unknown; image?: unknown };
-
-    if (!['user', 'assistant', 'system'].includes(String(candidate.role))) return null;
-    if (typeof candidate.content !== 'string' || candidate.content.length > 4_000) return null;
-
-    if (candidate.image !== undefined) {
-      if (typeof candidate.image !== 'string') return null;
-      if (!candidate.image.startsWith('data:image/')) return null;
-      if (candidate.image.length > 3_000_000) return null;
-    }
-
-    return {
-      role: candidate.role as 'user' | 'assistant' | 'system',
-      content: candidate.content.trim(),
-      image: candidate.image as string | undefined,
-    };
-  });
-
-  if (normalized.some((message) => message === null)) {
-    return { ok: false as const, error: 'Messages must include valid role/content fields.' };
-  }
-
-  return { ok: true as const, messages: normalized as NonNullable<(typeof normalized)[number]>[] };
 }

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, MapPin, Navigation, Loader2, Volume2, ArrowLeft, Camera, Mic, Leaf, ShoppingCart, Crown, Shirt, AlertTriangle, Globe, ScanFace, Tv2, Activity, Play } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import dynamic from 'next/dynamic';
 
 import { ChatMessage } from '@/types';
@@ -10,6 +11,13 @@ import { ChatMessage } from '@/types';
 const StadiumMap = dynamic(() => import('@/components/StadiumMap'), {
   ssr: false,
 });
+
+interface ISpeechRecognitionEvent {
+  results: { transcript: string }[][];
+}
+interface ISpeechRecognitionErrorEvent {
+  error: string;
+}
 
 export default function FanMode() {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -25,8 +33,10 @@ export default function FanMode() {
   const [showPlayerStats, setShowPlayerStats] = useState(false);
   const [showVIPModal, setShowVIPModal] = useState(false);
   const [showSeatView, setShowSeatView] = useState(false);
+  const [showRewardsModal, setShowRewardsModal] = useState(false);
   const [language, setLanguage] = useState('en-US');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -57,6 +67,14 @@ export default function FanMode() {
     setMessages(prev => [...prev, { role: 'user', content: 'SUBMIT FAN CAM' }]);
     setTimeout(() => {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Your AR selfie has been submitted to the Jumbotron queue! Keep an eye on the big screens. [AWARD_GREEN_POINTS]' }]);
+    }, 1000);
+  }, []);
+
+  // Sustainability & Transit Feature
+  const handleTransitInfo = useCallback(() => {
+    setMessages(prev => [...prev, { role: 'user', content: 'Eco-Transit Options' }]);
+    setTimeout(() => {
+      setMessages(prev => [...prev, { role: 'assistant', content: 'The NJ Transit rail from Secaucus is running on time. Taking the train instead of driving reduces your carbon footprint by ~15 lbs of CO2! 🚆🌿 [AWARD_GREEN_POINTS]' }]);
     }, 1000);
   }, []);
 
@@ -97,7 +115,12 @@ export default function FanMode() {
   }, []);
 
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -126,17 +149,18 @@ export default function FanMode() {
       return;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = false;
 
     recognition.onstart = () => setIsListening(true);
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: ISpeechRecognitionEvent) => {
       const transcript = event.results[0][0].transcript;
       setInput(prev => prev + (prev ? " " : "") + transcript);
     };
-    recognition.onerror = (event: any) => {
+    recognition.onerror = (event: ISpeechRecognitionErrorEvent) => {
       console.error("Speech recognition error", event.error);
       setIsListening(false);
     };
@@ -178,7 +202,7 @@ export default function FanMode() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [...messages, userMessage] })
+        body: JSON.stringify({ messages: [...messages, userMessage], language })
       });
 
       const data = await response.json();
@@ -204,17 +228,32 @@ export default function FanMode() {
   }, [input, imagePreview, messages]);
 
   return (
-    <div id="main-content" className={`flex flex-col min-h-[100svh] ${isARMode ? 'bg-transparent' : 'bg-slate-950'} font-sans relative overflow-x-hidden w-full max-w-[100vw]`}>
+    <div id="main-content" className={`flex flex-col h-[100svh] overflow-hidden ${isARMode ? 'bg-transparent' : 'bg-slate-950'} font-sans relative w-full max-w-[100vw]`}>
       
       {/* AR Camera Background Feed */}
       {isARMode && (
-        <video 
-          ref={videoRef} 
-          autoPlay 
-          playsInline 
-          muted 
-          className="fixed inset-0 w-full h-full object-cover z-0 filter brightness-75"
-        />
+        <>
+          <video 
+            ref={videoRef} 
+            autoPlay 
+            playsInline 
+            muted 
+            className="fixed inset-0 w-full h-full object-cover z-0 filter brightness-75"
+          />
+          {/* Phase 5: AR Wayfinding Overlay */}
+          <div className="fixed inset-0 flex flex-col items-center justify-center pointer-events-none z-10 pt-20">
+            <div className="text-emerald-400 animate-bounce drop-shadow-[0_0_15px_rgba(16,185,129,0.8)]">
+              <svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+            </div>
+            <div className="bg-slate-900/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.3)] mt-8">
+              <p className="text-white font-extrabold text-2xl tracking-wide">120ft <span className="text-slate-400 text-lg">to SAP Gate</span></p>
+            </div>
+            {/* Bottleneck Warning Overlay */}
+            <div className="absolute top-1/3 left-1/4 bg-red-500/20 backdrop-blur-md px-4 py-2 rounded-xl border border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] transform -rotate-12">
+               <p className="text-red-400 font-bold text-sm flex items-center gap-1"><AlertTriangle className="w-4 h-4"/> High Density</p>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Premium Dark Theme Animated Background (Hidden in AR Mode) */}
@@ -269,16 +308,20 @@ export default function FanMode() {
           </button>
           
           {greenPoints > 0 && (
-            <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-full">
+            <button 
+              onClick={() => setShowRewardsModal(true)}
+              className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-full hover:bg-green-500/20 transition-colors"
+              aria-label="Open Rewards Wallet"
+            >
               <Leaf className="w-4 h-4 text-green-400" />
               <span className="text-sm font-bold text-green-400">{greenPoints}</span>
-            </div>
+            </button>
           )}
         </div>
       </header>
 
       {/* Main Content Area */}
-      <div className={`flex flex-col lg:flex-row w-full z-10 lg:min-h-[calc(100svh-96px)] ${isARMode ? 'bg-black/20 backdrop-blur-sm' : ''}`}>
+      <div className={`flex-1 flex flex-col lg:flex-row w-full z-10 min-h-0 ${isARMode ? 'bg-black/20 backdrop-blur-sm' : ''}`}>
         
         {/* AR Player Stats Overlay */}
         {isARMode && showPlayerStats && (
@@ -297,13 +340,13 @@ export default function FanMode() {
         )}
 
         {/* Left Side: Interactive Map */}
-        <div className="lg:w-1/2 p-4 lg:p-6 border-b lg:border-b-0 lg:border-r border-slate-800/50 flex flex-col h-[42svh] min-h-[300px] lg:h-[calc(100svh-96px)] lg:min-h-[560px] overflow-hidden">
+        <div className="shrink-0 lg:shrink lg:flex-1 lg:w-1/2 p-4 lg:p-6 border-b lg:border-b-0 lg:border-r border-slate-800/50 flex flex-col h-[40vh] lg:h-full lg:min-h-0 overflow-hidden relative">
           <StadiumMap activeLocation={activeLocation} />
         </div>
 
         {/* Right Side: Chat Interface */}
-        <div className="lg:w-1/2 flex flex-col min-h-[520px] lg:h-[calc(100svh-96px)] lg:min-h-[560px] overflow-hidden relative">
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth" role="log" aria-live="polite" aria-atomic="false">
+        <div className="flex-1 lg:w-1/2 flex flex-col min-h-0 overflow-hidden relative">
+          <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth" role="log" aria-live="polite" aria-atomic="false">
             {messages.map((msg, index) => {
               const orderMatch = msg.content.match(/\[RENDER_ORDER_CARD:(.+?)\]/);
               const orderItem = orderMatch ? orderMatch[1] : null;
@@ -327,8 +370,7 @@ export default function FanMode() {
                     : 'bg-slate-900/80 backdrop-blur-xl text-slate-200 border border-slate-700/80 rounded-bl-none shadow-[0_0_20px_rgba(0,0,0,0.5)]'}`}>
                     
                     {msg.image && (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={msg.image} alt="Uploaded surroundings for location context" className="max-w-full h-auto rounded-xl mb-3 border border-slate-700/50" />
+                      <Image src={msg.image} alt="Uploaded surroundings for location context" width={400} height={300} className="max-w-full h-auto rounded-xl mb-3 border border-slate-700/50" />
                     )}
                     <p className="leading-relaxed whitespace-pre-wrap">{finalText}</p>
 
@@ -442,8 +484,7 @@ export default function FanMode() {
           <footer className={`px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] ${isARMode ? 'bg-slate-900/60' : 'bg-slate-900/80'} backdrop-blur-2xl border-t border-slate-800/50 z-20 shrink-0`}>
             {imagePreview && (
               <div className="max-w-4xl mx-auto mb-3 relative inline-block">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={imagePreview} alt="Camera upload preview" className="h-16 w-16 object-cover rounded-lg border-2 border-fuchsia-500" />
+                <Image src={imagePreview} alt="Camera upload preview" width={64} height={64} className="h-16 w-16 object-cover rounded-lg border-2 border-fuchsia-500" />
                 <button suppressHydrationWarning onClick={() => setImagePreview(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold" aria-label="Remove image preview">&times;</button>
               </div>
             )}
@@ -475,6 +516,12 @@ export default function FanMode() {
                 className="flex items-center gap-1.5 bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/50 rounded-full px-3 py-1 hover:bg-fuchsia-500/30 transition-colors font-bold"
               >
                 <Camera className="w-3.5 h-3.5" /> Submit to Fan Cam
+              </button>
+              <button 
+                onClick={handleTransitInfo}
+                className="flex items-center gap-1.5 bg-green-500/20 text-green-400 border border-green-500/50 rounded-full px-3 py-1 hover:bg-green-500/30 transition-colors font-bold"
+              >
+                <Leaf className="w-3.5 h-3.5" /> Eco-Transit Info
               </button>
               {isARMode && (
                 <button 
@@ -553,6 +600,50 @@ export default function FanMode() {
             </div>
             <button onClick={() => setShowVIPModal(false)} className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-full font-bold transition-colors" aria-label="Close VIP Fast-Pass modal">
               Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Gamification Rewards Modal */}
+      {showRewardsModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4" role="dialog" aria-modal="true" aria-labelledby="rewards-title">
+          <div className="bg-slate-900 border border-green-500/50 rounded-3xl p-8 max-w-sm w-full text-center shadow-[0_0_40px_rgba(34,197,94,0.2)]">
+            <Leaf className="w-12 h-12 text-green-400 mx-auto mb-4" />
+            <h2 id="rewards-title" className="text-2xl font-extrabold text-green-400 mb-2">Rewards Wallet</h2>
+            <p className="text-sm text-slate-400 mb-6">You have {greenPoints} Green Points.</p>
+            
+            <div className="space-y-3 mb-6">
+              <button 
+                disabled={greenPoints < 100}
+                onClick={() => {
+                  const newPoints = greenPoints - 100;
+                  setGreenPoints(newPoints);
+                  localStorage.setItem('stadialogix_green_points', newPoints.toString());
+                  alert('Successfully redeemed 10% Off Food!');
+                }}
+                className="w-full py-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold flex justify-between px-4 items-center transition-colors"
+              >
+                <span>10% Off Food</span>
+                <span className="text-green-400">100 pts</span>
+              </button>
+              <button 
+                disabled={greenPoints < 500}
+                onClick={() => {
+                  const newPoints = greenPoints - 500;
+                  setGreenPoints(newPoints);
+                  localStorage.setItem('stadialogix_green_points', newPoints.toString());
+                  alert('Successfully redeemed Digital AR Jersey!');
+                }}
+                className="w-full py-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold flex justify-between px-4 items-center transition-colors"
+              >
+                <span>Digital AR Jersey</span>
+                <span className="text-green-400">500 pts</span>
+              </button>
+            </div>
+
+            <button onClick={() => setShowRewardsModal(false)} className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-full font-bold transition-colors">
+              Close Wallet
             </button>
           </div>
         </div>

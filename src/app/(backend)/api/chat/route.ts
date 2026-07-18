@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const responseText = await AIService.generateChatResponse(validation.messages);
+    const responseText = await AIService.generateChatResponse(validation.messages, validation.language);
 
     return NextResponse.json(
       { message: responseText },

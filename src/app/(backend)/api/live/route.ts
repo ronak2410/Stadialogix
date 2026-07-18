@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import stadiumData from '@/data/stadium_data.json';
+import { StadiumNode } from '@/types';
 
 // Simulate live IoT data fluctuations
 export async function GET() {
-  const liveNodes = stadiumData.nodes.map((node: any) => {
+  const liveNodes = (stadiumData.nodes as StadiumNode[]).map((node) => {
     // Randomize crowd density by +/- 15%
     const crowdFluctuation = Math.floor(Math.random() * 30) - 15;
     let newDensity = (node.crowdDensity || 50) + crowdFluctuation;
