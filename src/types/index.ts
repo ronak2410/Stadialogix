@@ -1,7 +1,7 @@
 export interface StadiumNode {
   id: string;
   name: string;
-  type: 'gate' | 'seating' | 'vendor' | 'amenity' | 'logistics';
+  type: 'gate' | 'seating' | 'vendor' | 'amenity' | 'logistics' | 'restroom';
   location?: string;
   details?: string;
   description?: string;
@@ -11,6 +11,7 @@ export interface StadiumNode {
   wasteBinLevel?: number;
   isAccessible?: boolean;
   dynamicRouting?: string;
+  coords?: [number, number];
 }
 
 export interface ChatMessage {

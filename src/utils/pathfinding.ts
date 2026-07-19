@@ -1,90 +1,156 @@
+import Graph from 'graphology';
+import shortestPath from 'graphology-shortest-path';
+import { getIoTState } from './iotState';
 import { StadiumNode } from '@/types';
 
-// Simple heuristic: straight line distance
-function heuristic(a: { x: number, y: number }, b: { x: number, y: number }) {
-  return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
-}
-
-function getPosition(node: StadiumNode) {
-  const seed = node.id.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-  const angle = (seed % 360) * (Math.PI / 180);
-  const radius = (seed % 8) + 2;
-  return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
-}
-
-export function findAStarPath(nodes: StadiumNode[], startId: string, endId: string, avoidStairs: boolean = false): string[] {
-  const start = nodes.find(n => n.id === startId);
-  const end = nodes.find(n => n.id === endId);
+// Global map coordinates matching COORDINATES in StadiumMap.tsx
+export const COORDINATES: Record<string, [number, number]> = {
+  // Gates
+  'gate-verizon': [40.8122, -74.0745],
+  'gate-sap': [40.8135, -74.0735],
+  'gate-pepsi': [40.8142, -74.0750],
+  'gate-budlight': [40.8130, -74.0760],
   
-  if (!start || !end) return [];
+  // Sections
+  'sec-100': [40.8128, -74.0740],
+  'sec-120': [40.8132, -74.0742],
+  'sec-200': [40.8135, -74.0745],
+  'sec-300': [40.8138, -74.0748],
+  
+  // Vendors & Amenities
+  'vendor-pizza-1': [40.8129, -74.0738],
+  'vendor-taco-1': [40.8133, -74.0748],
+  'restroom-101': [40.8130, -74.0741],
+  'medical-1': [40.8134, -74.0744],
+  'merch-main': [40.8125, -74.0742],
+  'premium-coaches-club': [40.8136, -74.0750],
+  
+  // Transit
+  'transit-nj-rail': [40.8145, -74.0720],
+  'parking-lot-e': [40.8115, -74.0765],
+  'parking-lot-f': [40.8105, -74.0755],
+  'parking-lot-g': [40.8155, -74.0730],
+  'rideshare': [40.8160, -74.0780],
+  
+  // Roads
+  'highway-route3': [40.8090, -74.0750],
+  'highway-route120': [40.8150, -74.0770],
+  'highway-nj-turnpike': [40.8170, -74.0710],
+  
+  // Custom Pathfinding Waypoints (Intersections/Hallways)
+  'waypoint-concourse-east': [40.8132, -74.0732],
+  'waypoint-concourse-west': [40.8132, -74.0755],
+  'waypoint-concourse-north': [40.8140, -74.0742],
+  'waypoint-concourse-south': [40.8124, -74.0742],
+  
+  // Elevators for accessibility
+  'elevator-east': [40.8134, -74.0734],
+  'elevator-west': [40.8134, -74.0753],
+};
 
-  // Build adjacency graph based on proximity for demo purposes
-  // In a real app, 'edges' would be explicitly defined.
-  // Here we dynamically connect nodes within a certain distance.
-  const graph: Record<string, StadiumNode[]> = {};
-  nodes.forEach(n1 => {
-    graph[n1.id] = nodes.filter(n2 => {
-      if (n1.id === n2.id) return false;
-      const dist = heuristic(getPosition(n1), getPosition(n2));
-      // Avoid stairs if requested (simulate by assuming 'gate' to 'section' might have stairs unless elevator)
-      // For demo, if avoidStairs is true, we penalize paths going directly across center
-      if (avoidStairs && (n2.name.toLowerCase().includes('stairs') || n2.name.toLowerCase().includes('escalator'))) {
-        return false; 
-      }
-      return dist < 30; // Max connect distance
-    });
+let standardGraph: Graph | null = null;
+let accessibleGraph: Graph | null = null;
+
+export function buildRoutingGraph(avoidStairs: boolean = false) {
+  if (avoidStairs && accessibleGraph) return accessibleGraph;
+  if (!avoidStairs && standardGraph) return standardGraph;
+
+  const graph = new Graph();
+  const state = getIoTState();
+
+  // 1. Add all nodes to graph
+  Object.keys(COORDINATES).forEach(id => {
+    graph.addNode(id, { x: COORDINATES[id][0], y: COORDINATES[id][1] });
   });
 
-  const openSet = new Set([startId]);
-  const cameFrom = new Map<string, string>();
-  
-  const gScore = new Map<string, number>();
-  nodes.forEach(n => gScore.set(n.id, Infinity));
-  gScore.set(startId, 0);
-
-  const fScore = new Map<string, number>();
-  nodes.forEach(n => fScore.set(n.id, Infinity));
-  fScore.set(startId, heuristic(getPosition(start), getPosition(end)));
-
-  while (openSet.size > 0) {
-    let currentId = '';
-    let lowestF = Infinity;
+  // 2. Helper to add bidirectional edges with weight (distance)
+  const addEdge = (node1: string, node2: string, type: 'flat' | 'stairs' = 'flat') => {
+    if (!graph.hasNode(node1) || !graph.hasNode(node2)) return;
+    if (avoidStairs && type === 'stairs') return; // Skip stairs for accessibility mode
     
-    openSet.forEach(id => {
-      const f = fScore.get(id) || Infinity;
-      if (f < lowestF) {
-        lowestF = f;
-        currentId = id;
-      }
-    });
+    const [x1, y1] = COORDINATES[node1];
+    const [x2, y2] = COORDINATES[node2];
+    const distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
 
-    if (currentId === endId) {
-      // Reconstruct path
-      const path = [currentId];
-      while (cameFrom.has(currentId)) {
-        currentId = cameFrom.get(currentId)!;
-        path.unshift(currentId);
-      }
-      return path;
+    let penalty = 1.0;
+    const nodeState = state.nodes.find((n: StadiumNode) => n.id === node2 || n.id === node1);
+    if (nodeState && nodeState.crowdDensity) {
+      if (nodeState.crowdDensity > 80) penalty = 3.0; // Heavy penalty to route around crowds
+      else if (nodeState.crowdDensity > 50) penalty = 1.5;
     }
 
-    openSet.delete(currentId);
-    const neighbors = graph[currentId] || [];
+    graph.addUndirectedEdge(node1, node2, { weight: distance * penalty });
+  };
 
-    for (const neighbor of neighbors) {
-      const currentNode = nodes.find(n => n.id === currentId)!;
-      const tentativeG = (gScore.get(currentId) || Infinity) + heuristic(getPosition(currentNode), getPosition(neighbor));
+  // 3. Define paths (Edges)
+  addEdge('gate-verizon', 'waypoint-concourse-south');
+  addEdge('gate-sap', 'waypoint-concourse-east');
+  addEdge('gate-pepsi', 'waypoint-concourse-north');
+  addEdge('gate-budlight', 'waypoint-concourse-west');
 
-      if (tentativeG < (gScore.get(neighbor.id) || Infinity)) {
-        cameFrom.set(neighbor.id, currentId);
-        gScore.set(neighbor.id, tentativeG);
-        fScore.set(neighbor.id, tentativeG + heuristic(getPosition(neighbor), getPosition(end)));
-        if (!openSet.has(neighbor.id)) {
-          openSet.add(neighbor.id);
-        }
-      }
-    }
+  addEdge('waypoint-concourse-south', 'waypoint-concourse-east');
+  addEdge('waypoint-concourse-east', 'waypoint-concourse-north');
+  addEdge('waypoint-concourse-north', 'waypoint-concourse-west');
+  addEdge('waypoint-concourse-west', 'waypoint-concourse-south');
+
+  addEdge('merch-main', 'waypoint-concourse-south');
+  addEdge('vendor-pizza-1', 'waypoint-concourse-south');
+  addEdge('vendor-taco-1', 'waypoint-concourse-west');
+  addEdge('medical-1', 'waypoint-concourse-east');
+  addEdge('premium-coaches-club', 'waypoint-concourse-west');
+  addEdge('restroom-101', 'waypoint-concourse-east');
+
+  addEdge('sec-100', 'waypoint-concourse-south');
+  
+  // Upper level sections (usually require stairs)
+  addEdge('sec-120', 'waypoint-concourse-east', 'stairs');
+  addEdge('sec-200', 'waypoint-concourse-east', 'stairs');
+  addEdge('sec-300', 'waypoint-concourse-north', 'stairs');
+
+  // Elevators provide flat access to upper sections
+  addEdge('waypoint-concourse-east', 'elevator-east');
+  addEdge('elevator-east', 'sec-120');
+  addEdge('elevator-east', 'sec-200');
+  
+  addEdge('waypoint-concourse-west', 'elevator-west');
+  addEdge('waypoint-concourse-north', 'elevator-west');
+  addEdge('elevator-west', 'sec-300');
+
+  // External connections
+  addEdge('transit-nj-rail', 'gate-sap');
+  addEdge('transit-nj-rail', 'gate-pepsi');
+  addEdge('rideshare', 'highway-route120');
+  
+  addEdge('parking-lot-e', 'gate-budlight');
+  addEdge('parking-lot-f', 'gate-verizon');
+  addEdge('parking-lot-g', 'gate-pepsi');
+
+  if (avoidStairs) {
+    accessibleGraph = graph;
+  } else {
+    standardGraph = graph;
+  }
+  return graph;
+}
+
+export function getShortestPath(startId: string, targetId: string, avoidStairs: boolean = false): [number, number][] {
+  const graph = buildRoutingGraph(avoidStairs);
+  
+  if (!graph.hasNode(startId) || !graph.hasNode(targetId)) {
+    return [];
   }
 
-  return []; // No path found
+  try {
+    const path = shortestPath.dijkstra.bidirectional(graph, startId, targetId, 'weight');
+    if (!path) return [];
+    
+    return path.map((nodeId: string) => COORDINATES[nodeId]);
+  } catch (error) {
+    console.error("Pathfinding error:", error);
+    return [];
+  }
+}
+
+export function findAStarPath(nodes: StadiumNode[], startId: string, endId: string, avoidStairs: boolean = false): [number, number][] {
+  return getShortestPath(startId, endId, avoidStairs);
 }

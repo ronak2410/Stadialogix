@@ -1,27 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI, Type } from '@google/genai';
-import stadiumData from '@/data/stadium_data.json';
+import { getIoTState } from '@/utils/iotState';
 import { checkRateLimit, getClientKey, SECURITY_HEADERS } from '@/utils/requestGuards';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-async function generateWithRetry(model: string, contents: string, config: Record<string, unknown>, maxRetries = 3) {
-  let lastError: unknown;
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await ai.models.generateContent({ model, contents, config });
-    } catch (error: unknown) {
-      lastError = error;
-      const err = error as { status?: number; message?: string };
-      if (err?.status === 503 || err?.message?.includes('503') || err?.message?.includes('high demand') || err?.status === 429) {
-        console.log(`API availability issue in staff route, retrying (${i + 1}/${maxRetries})...`);
-        await new Promise(res => setTimeout(res, 2000 * (i + 1)));
-      } else {
-        throw error;
-      }
-    }
+// Gemini retry logic removed, using Groq exclusively for Staff Dashboard
+
+async function generateWithGroq(systemInstruction: string, currentState: any) {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY is not defined');
   }
-  throw lastError;
+
+  const prompt = `${systemInstruction}\n\nHere is the current MetLife Stadium state JSON: ${JSON.stringify(currentState)}\n\nRespond ONLY with a JSON object containing an "alerts" array.`;
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: 'llama-3.1-8b-instant',
+      messages: [
+        { role: 'user', content: prompt }
+      ],
+      response_format: { type: 'json_object' }
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Groq API Error: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return JSON.parse(data.choices[0].message.content);
 }
 
 const fallbackAlerts = [
@@ -50,11 +63,6 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  try {
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ alerts: fallbackAlerts }, { headers: SECURITY_HEADERS });
-    }
-
     const systemInstruction = `You are the "StadiaLogix" AI Operations Analyst for MetLife Stadium (2026 World Cup).
 
 CRITICAL RULES (NEVER BREAK THESE):
@@ -63,41 +71,16 @@ CRITICAL RULES (NEVER BREAK THESE):
 3. Predict 2-3 immediate operational bottlenecks based ONLY on the data. For example: >80% crowd density at a gate requires rerouting. >85% waste requires sanitation. MUST explicitly include at least one SUSTAINABILITY alert (e.g. waste management or eco-transit).
 4. Return ONLY a valid JSON array of alerts matching the schema. No markdown wrapping.`;
 
-    const response = await generateWithRetry(
-      'gemini-2.5-flash',
-      `Here is the current MetLife Stadium state JSON: ${JSON.stringify(stadiumData)}`,
-      {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            alerts: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  type: { type: Type.STRING, description: 'e.g., CROWD CONTROL, SANITATION, SECURITY' },
-                  severity: { type: Type.STRING, description: 'HIGH, MEDIUM, or LOW' },
-                  title: { type: Type.STRING, description: 'A short bold title for the alert' },
-                  description: { type: Type.STRING, description: 'Detailed explanation of the predicted issue based on the data' },
-                  action: { type: Type.STRING, description: 'Prescriptive action for the staff to take' },
-                },
-              },
-            },
-          },
-        },
+    const currentState = getIoTState();
+    
+    try {
+      const groqAlerts = await generateWithGroq(systemInstruction, currentState);
+      if (groqAlerts && groqAlerts.alerts) {
+        return NextResponse.json(groqAlerts, { headers: SECURITY_HEADERS });
       }
-    );
-
-    const output = response.text;
-    if (output) {
-      return NextResponse.json(JSON.parse(output), { headers: SECURITY_HEADERS });
+    } catch (groqErr) {
+      console.error('Groq generation failed in staff route:', groqErr);
     }
-
+    
     return NextResponse.json({ alerts: fallbackAlerts }, { headers: SECURITY_HEADERS });
-  } catch (error: unknown) {
-    console.error('Error in staff route, falling back to mock response:', error);
-    return NextResponse.json({ alerts: fallbackAlerts }, { headers: SECURITY_HEADERS });
-  }
 }

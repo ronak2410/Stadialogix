@@ -19,16 +19,7 @@ describe('AIService', () => {
     process.env.GEMINI_API_KEY = 'test-key';
   });
 
-  it('should fall back to offline mode for known keywords', () => {
-    const response = AIService.getOfflineFallback('where is the bathroom');
-    expect(response).toContain('[Offline Mode]');
-    expect(response).toContain('restroom');
-  });
 
-  it('should default offline mode if no keyword matches', () => {
-    const response = AIService.getOfflineFallback('hello there');
-    expect(response).toBe('I am currently operating in offline mode. How can I assist you with MetLife Stadium?');
-  });
 
   it('should throw error if Gemini key is missing', async () => {
     delete process.env.GEMINI_API_KEY;

@@ -1,41 +1,24 @@
 import { NextResponse } from 'next/server';
-import stadiumData from '@/data/stadium_data.json';
-import { StadiumNode } from '@/types';
+import { getIoTState } from '@/utils/iotState';
+import { getLiveMatchState } from '@/utils/matchState';
 
-// Simulate live IoT data fluctuations
+// Now returns true live state from the state manager instead of simulated fluctuations
 export async function GET() {
-  const liveNodes = (stadiumData.nodes as StadiumNode[]).map((node) => {
-    // Randomize crowd density by +/- 15%
-    const crowdFluctuation = Math.floor(Math.random() * 30) - 15;
-    let newDensity = (node.crowdDensity || 50) + crowdFluctuation;
-    newDensity = Math.max(0, Math.min(100, newDensity));
-
-    // Randomize queue times by +/- 5 mins
-    const queueFluctuation = Math.floor(Math.random() * 10) - 5;
-    let newQueue = (node.currentQueueTime || 0) + queueFluctuation;
-    newQueue = Math.max(0, newQueue);
-
-    return {
-      ...node,
-      crowdDensity: newDensity,
-      currentQueueTime: newQueue,
-    };
-  });
-
-  // Mock live score
-  const matchMinute = 84 + Math.floor(Math.random() * 5); // 84 to 89
-  const matchSeconds = Math.floor(Math.random() * 60).toString().padStart(2, '0');
+  const currentState = getIoTState();
+  const currentMatch = getLiveMatchState();
 
   return NextResponse.json({
-    stadium: stadiumData.stadium,
-    capacity: stadiumData.capacity,
-    nodes: liveNodes,
+    stadium: currentState.stadium,
+    capacity: currentState.capacity,
+    nodes: currentState.nodes,
+    incidents: currentState.incidents || [],
+    flashSales: currentState.flashSales || [],
     match: {
-      team1: 'USA',
-      team2: 'Mexico',
-      score1: 2,
-      score2: 1,
-      time: `${matchMinute}:${matchSeconds}`
+      team1: currentMatch.homeTeam,
+      team2: currentMatch.awayTeam,
+      score1: currentMatch.homeScore,
+      score2: currentMatch.awayScore,
+      time: currentMatch.clockDisplay
     }
   });
 }

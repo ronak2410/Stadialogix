@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "StadiaLogix",
   description: "GenAI-Powered Tournament Operations & Fan Experience Platform",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
